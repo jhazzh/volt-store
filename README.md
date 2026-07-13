@@ -6,7 +6,7 @@ E-commerce storefront built with **Next.js 16 (App Router), React 19, TypeScript
 
 ## Live demo
 
-- **URL:** _add Vercel URL_
+- **URL:** https://volt-store-theta.vercel.app
 - Demo checkout — no real payment.
 
 ## Architecture decisions
