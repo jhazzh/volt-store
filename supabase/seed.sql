@@ -13,7 +13,7 @@ from (values
   ('Orbit Watch S', 'orbit-watch-s', 'AMOLED smartwatch, GPS, 7-day battery.', 249.00, 18, 'https://picsum.photos/seed/orbit/800/800', 'wearables'),
   ('Stride Band', 'stride-band', 'Slim fitness tracker with sleep insights.', 59.00, 80, 'https://picsum.photos/seed/stride/800/800', 'wearables'),
   ('Volt Charger 65W', 'volt-charger-65w', 'GaN USB-C charger, dual port.', 39.00, 100, 'https://picsum.photos/seed/volt/800/800', 'accessories'),
-  ('Drift Mouse Pro', 'drift-mouse-pro', 'Ergonomic wireless mouse, 4000 DPI.', 69.00, 45, 'https://picsum.photos/seed/drift/800/800', 'accessories'),
+  ('Drift Mouse Pro', 'drift-mouse-pro', 'Ergonomic wireless mouse, 4000 DPI.', 69.00, 45, 'https://picsum.photos/seed/mouse/800/800', 'accessories'),
   ('Atlas Backpack', 'atlas-backpack', 'Water-resistant 20L tech backpack.', 99.00, 22, 'https://picsum.photos/seed/atlas/800/800', 'accessories')
 ) as v(name, slug, description, price, stock, image_url, category_slug)
 join public.categories c on c.slug = v.category_slug;
