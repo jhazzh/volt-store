@@ -10,6 +10,8 @@ test("browse and add to cart", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Nimbus Headphones" })).toBeVisible();
 
   await page.getByRole("button", { name: "Add to cart" }).click();
-  await expect(page.getByRole("dialog", { name: "Shopping cart" })).toBeVisible();
-  await expect(page.getByText("Nimbus Headphones")).toBeVisible();
+  // Scope to the drawer: the name also appears in the PDP heading behind it.
+  const cart = page.getByRole("dialog", { name: "Shopping cart" });
+  await expect(cart).toBeVisible();
+  await expect(cart.getByText("Nimbus Headphones")).toBeVisible();
 });
