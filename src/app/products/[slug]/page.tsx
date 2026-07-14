@@ -71,7 +71,7 @@ export default async function ProductPage({ params }: Props) {
               src={product.image_url}
               alt={product.name}
               fill
-              priority
+              loading="eager"
               sizes="(min-width: 768px) 50vw, 100vw"
               className="object-cover"
             />
