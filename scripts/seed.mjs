@@ -19,7 +19,7 @@ const products = [
   ["Orbit Watch S", "orbit-watch-s", "AMOLED smartwatch, GPS, 7-day battery.", 249, 18, "orbit", "wearables"],
   ["Stride Band", "stride-band", "Slim fitness tracker with sleep insights.", 59, 80, "stride", "wearables"],
   ["Volt Charger 65W", "volt-charger-65w", "GaN USB-C charger, dual port.", 39, 100, "volt", "accessories"],
-  ["Drift Mouse Pro", "drift-mouse-pro", "Ergonomic wireless mouse, 4000 DPI.", 69, 45, "drift", "accessories"],
+  ["Drift Mouse Pro", "drift-mouse-pro", "Ergonomic wireless mouse, 4000 DPI.", 69, 45, "mouse", "accessories"],
   ["Atlas Backpack", "atlas-backpack", "Water-resistant 20L tech backpack.", 99, 22, "atlas", "accessories"],
 ];
 
