@@ -2,7 +2,12 @@
 
 import Image from "next/image";
 import { useState, useTransition } from "react";
-import { startCheckout } from "@/app/checkout/actions";
+import {
+  startCheckout,
+  startPaypalCheckout,
+  startXenditCheckout,
+  type CheckoutState,
+} from "@/app/checkout/actions";
 import { useCart } from "@/components/cart/cart-context";
 import { cartTotal } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
@@ -20,13 +25,13 @@ export function CheckoutForm() {
     return <p className="mt-6 text-muted">Your cart is empty.</p>;
   }
 
-  const submit = () => {
+  const submit = (action: (input: { items: { productId: string; qty: number }[] }) => Promise<CheckoutState>) => {
     setError(null);
     startTransition(async () => {
-      const result = await startCheckout({
+      const result = await action({
         items: items.map((i) => ({ productId: i.product.id, qty: i.qty })),
       });
-      // Success redirects to Stripe (cart cleared on the order page).
+      // Success redirects to the provider (cart cleared on the order page).
       if (result?.error) setError(result.error);
     });
   };
@@ -70,14 +75,31 @@ export function CheckoutForm() {
 
       <button
         type="button"
-        onClick={submit}
+        onClick={() => submit(startCheckout)}
         disabled={pending}
         className="mt-6 w-full rounded-lg bg-accent py-3 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {pending ? "Redirecting…" : "Pay with card"}
       </button>
+      <button
+        type="button"
+        onClick={() => submit(startPaypalCheckout)}
+        disabled={pending}
+        className="mt-3 w-full rounded-lg border border-border py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        {pending ? "Redirecting…" : "Pay with PayPal"}
+      </button>
+      <button
+        type="button"
+        onClick={() => submit(startXenditCheckout)}
+        disabled={pending}
+        className="mt-3 w-full rounded-lg border border-border py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        {pending ? "Redirecting…" : "Pay with QRIS / bank transfer"}
+      </button>
       <p className="mt-2 text-center text-xs text-muted">
-        Stripe test mode — use card 4242 4242 4242 4242. Login required.
+        Test mode — card 4242 4242 4242 4242, sandbox PayPal, or simulated QRIS/VA.
+        Login required.
       </p>
     </div>
   );
