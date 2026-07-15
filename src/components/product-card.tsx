@@ -4,10 +4,16 @@ import { formatPrice } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
 /**
- * @param {{product: Product}} props product
+ * @param {{product: Product, eager?: boolean}} props product; eager for above-the-fold cards
  * @return {JSX.Element} PLP/home card
  */
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  eager = false,
+}: {
+  product: Product;
+  eager?: boolean;
+}) {
   return (
     <Link
       href={`/products/${product.slug}`}
@@ -19,6 +25,7 @@ export function ProductCard({ product }: { product: Product }) {
             src={product.image_url}
             alt={product.name}
             fill
+            loading={eager ? "eager" : "lazy"}
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />

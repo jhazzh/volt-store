@@ -36,8 +36,9 @@ export default async function ProductsPage({ searchParams }: Props) {
         <p className="py-16 text-center text-muted">No products match your filters.</p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
+          {products.map((p, i) => (
+            // First row (max 4 cols) is above the fold — the LCP lives here.
+            <ProductCard key={p.id} product={p} eager={i < 4} />
           ))}
         </div>
       )}
