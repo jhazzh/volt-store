@@ -32,8 +32,9 @@ export default async function HomePage() {
       <section className="pb-16">
         <h2 className="mb-6 text-xl font-semibold">New arrivals</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {featured.map((p) => (
-            <ProductCard key={p.id} product={p} />
+          {featured.map((p, i) => (
+            // First row (max 4 cols) is above the fold — the LCP lives here.
+            <ProductCard key={p.id} product={p} eager={i < 4} />
           ))}
         </div>
       </section>
