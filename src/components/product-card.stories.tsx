@@ -19,10 +19,11 @@ const meta = {
   component: ProductCard,
   parameters: { layout: "centered" },
   tags: ["autodocs"],
-  // Give the card a realistic width so the aspect-square image renders.
+  // Card's <Link> renders an inline <a>; grid gives it block width in the app.
+  // Reproduce that here with a fixed-width grid so the image is contained.
   decorators: [
     (Story) => (
-      <div style={{ width: 260 }}>
+      <div style={{ display: "grid", width: 260 }}>
         <Story />
       </div>
     ),
