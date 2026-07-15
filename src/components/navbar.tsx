@@ -24,7 +24,7 @@ export function Navbar() {
           <Link href="/products" className="hover:text-accent transition-colors">
             Products
           </Link>
-          <Link href="/login" className="hover:text-accent transition-colors">
+          <Link href="/account" className="hover:text-accent transition-colors">
             Account
           </Link>
           <button
