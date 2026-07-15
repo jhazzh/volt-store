@@ -50,5 +50,29 @@ export async function POST(request: Request) {
     if (error) return Response.json({ error: "DB update failed" }, { status: 500 });
   }
 
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object;
+    const paymentIntent = charge.payment_intent;
+    if (typeof paymentIntent !== "string") return Response.json({ received: true });
+
+    // Charge carries no order metadata — map back via its Checkout Session.
+    const { data: sessions } = await createStripeClient().checkout.sessions.list({
+      payment_intent: paymentIntent,
+      limit: 1,
+    });
+    const orderId = sessions[0]?.metadata?.order_id;
+    if (!orderId) return Response.json({ error: "Missing order_id" }, { status: 400 });
+
+    // `charge.refunded` is true only when the full amount came back.
+    const status = charge.refunded ? "refunded" : "partially_refunded";
+    // partially_refunded stays updatable: later refunds can complete it.
+    const { error } = await createAdminClient()
+      .from("orders")
+      .update({ status })
+      .eq("id", orderId)
+      .in("status", ["paid", "partially_refunded"]);
+    if (error) return Response.json({ error: "DB update failed" }, { status: 500 });
+  }
+
   return Response.json({ received: true });
 }

@@ -25,7 +25,7 @@ export type Order = {
   id: string;
   user_id: string;
   total: number;
-  status: "pending" | "paid" | "cancelled";
+  status: "pending" | "paid" | "cancelled" | "refunded" | "partially_refunded";
   stripe_session_id: string | null;
   paypal_order_id: string | null;
   xendit_invoice_id: string | null;

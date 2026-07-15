@@ -30,20 +30,22 @@ export default async function OrderPage({ params }: Props) {
   if (!order) notFound();
 
   // 'pending' right after Stripe redirect = webhook not landed yet.
-  const heading =
-    order.status === "paid"
-      ? "Thank you! 🎉"
-      : order.status === "pending"
-        ? "Payment processing…"
-        : "Order cancelled";
+  const headings: Record<string, string> = {
+    paid: "Thank you! 🎉",
+    pending: "Payment processing…",
+    refunded: "Order refunded",
+    partially_refunded: "Order partially refunded",
+    cancelled: "Order cancelled",
+  };
+  const heading = headings[order.status] ?? "Order";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-      {order.status !== "cancelled" && <ClearCart />}
+      {(order.status === "paid" || order.status === "pending") && <ClearCart />}
       <h1 className="text-3xl font-bold">{heading}</h1>
       <p className="mt-2 text-muted">
         Order <span className="font-mono text-sm">{order.id.slice(0, 8)}</span>
-        {order.status === "paid" ? " confirmed." : ` is ${order.status}.`}
+        {order.status === "paid" ? " confirmed." : ` is ${order.status.replace("_", " ")}.`}
       </p>
 
       <ul className="mx-auto mt-8 max-w-md space-y-2 text-left text-sm">

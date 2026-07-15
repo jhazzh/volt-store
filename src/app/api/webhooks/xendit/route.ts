@@ -1,11 +1,21 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createXenditInvoices } from "@/lib/xendit";
 
 const callbackSchema = z.object({
   id: z.string(),
   external_id: z.string(), // our order id
   status: z.enum(["PAID", "SETTLED", "EXPIRED"]).or(z.string()),
+});
+
+// Refund callbacks are wrapped, unlike the flat invoice callback.
+const refundSchema = z.object({
+  event: z.string(),
+  data: z.object({
+    invoice_id: z.string().optional(),
+    amount: z.number().optional(),
+  }),
 });
 
 /**
@@ -38,7 +48,29 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid token" }, { status: 401 });
   }
 
-  const parsed = callbackSchema.safeParse(await request.json().catch(() => null));
+  const body = await request.json().catch(() => null);
+
+  const refund = refundSchema.safeParse(body);
+  if (refund.success && refund.data.event.startsWith("refund.")) {
+    if (refund.data.event === "refund.succeeded" && refund.data.data.invoice_id) {
+      const { invoice_id, amount } = refund.data.data;
+      // Full vs partial: compare this refund to the invoice amount (IDR).
+      // Limitation: several partials that sum to full still read as partial.
+      const invoice = await createXenditInvoices().getInvoiceById({ invoiceId: invoice_id });
+      const status =
+        amount != null && amount >= invoice.amount ? "refunded" : "partially_refunded";
+      // partially_refunded stays updatable: later refunds can complete it.
+      const { error } = await createAdminClient()
+        .from("orders")
+        .update({ status })
+        .eq("xendit_invoice_id", invoice_id)
+        .in("status", ["paid", "partially_refunded"]);
+      if (error) return Response.json({ error: "DB update failed" }, { status: 500 });
+    }
+    return Response.json({ received: true });
+  }
+
+  const parsed = callbackSchema.safeParse(body);
   if (!parsed.success) return Response.json({ error: "Bad payload" }, { status: 400 });
 
   const { id, external_id, status } = parsed.data;
