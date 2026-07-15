@@ -29,12 +29,21 @@ export default async function OrderPage({ params }: Props) {
     .maybeSingle<OrderRow>(); // many-to-one join — override supabase-js array inference
   if (!order) notFound();
 
+  // 'pending' right after Stripe redirect = webhook not landed yet.
+  const heading =
+    order.status === "paid"
+      ? "Thank you! 🎉"
+      : order.status === "pending"
+        ? "Payment processing…"
+        : "Order cancelled";
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-      <ClearCart />
-      <h1 className="text-3xl font-bold">Thank you! 🎉</h1>
+      {order.status !== "cancelled" && <ClearCart />}
+      <h1 className="text-3xl font-bold">{heading}</h1>
       <p className="mt-2 text-muted">
-        Order <span className="font-mono text-sm">{order.id.slice(0, 8)}</span> confirmed.
+        Order <span className="font-mono text-sm">{order.id.slice(0, 8)}</span>
+        {order.status === "paid" ? " confirmed." : ` is ${order.status}.`}
       </p>
 
       <ul className="mx-auto mt-8 max-w-md space-y-2 text-left text-sm">

@@ -2,13 +2,13 @@
 
 import Image from "next/image";
 import { useState, useTransition } from "react";
-import { placeOrder } from "@/app/checkout/actions";
+import { startCheckout } from "@/app/checkout/actions";
 import { useCart } from "@/components/cart/cart-context";
 import { cartTotal } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 
 /**
- * Order summary + place-order (demo: no real payment).
+ * Order summary + pay button — redirects to Stripe Checkout.
  * @return {JSX.Element} checkout form
  */
 export function CheckoutForm() {
@@ -23,10 +23,10 @@ export function CheckoutForm() {
   const submit = () => {
     setError(null);
     startTransition(async () => {
-      const result = await placeOrder({
+      const result = await startCheckout({
         items: items.map((i) => ({ productId: i.product.id, qty: i.qty })),
       });
-      // Success redirects server-side (cart cleared on the order page).
+      // Success redirects to Stripe (cart cleared on the order page).
       if (result?.error) setError(result.error);
     });
   };
@@ -74,10 +74,10 @@ export function CheckoutForm() {
         disabled={pending}
         className="mt-6 w-full rounded-lg bg-accent py-3 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Placing order…" : "Place order (demo)"}
+        {pending ? "Redirecting…" : "Pay with card"}
       </button>
       <p className="mt-2 text-center text-xs text-muted">
-        Demo checkout — no payment is taken. Login required.
+        Stripe test mode — use card 4242 4242 4242 4242. Login required.
       </p>
     </div>
   );

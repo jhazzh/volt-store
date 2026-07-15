@@ -26,5 +26,6 @@ export type Order = {
   user_id: string;
   total: number;
   status: "pending" | "paid" | "cancelled";
+  stripe_session_id: string | null;
   created_at: string;
 };
