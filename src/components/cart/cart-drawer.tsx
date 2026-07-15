@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCart } from "@/components/cart/cart-context";
 import { cartTotal } from "@/lib/cart";
@@ -12,6 +13,45 @@ import { formatPrice } from "@/lib/format";
  */
 export function CartDrawer() {
   const { items, dispatch, isOpen, setOpen } = useCart();
+  const panelRef = useRef<HTMLElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // Element focused before open, so we can restore focus on close.
+  const restoreRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    restoreRef.current = document.activeElement as HTMLElement | null;
+    closeBtnRef.current?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      // Focus trap: keep Tab cycling inside the panel.
+      if (e.key === "Tab" && panelRef.current) {
+        const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input, select, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      restoreRef.current?.focus();
+    };
+  }, [isOpen, setOpen]);
 
   return (
     <AnimatePresence>
@@ -26,17 +66,20 @@ export function CartDrawer() {
             aria-hidden
           />
           <motion.aside
+            ref={panelRef}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.25 }}
             role="dialog"
+            aria-modal="true"
             aria-label="Shopping cart"
             className="fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col border-l border-border bg-background p-4"
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Your cart</h2>
               <button
+                ref={closeBtnRef}
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close cart"
