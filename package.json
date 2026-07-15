@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest",
+    "test": "vitest --project=unit",
     "test:e2e": "playwright test",
     "test:a11y": "playwright test a11y",
     "seed": "node --env-file=.env.local --experimental-websocket scripts/seed.mjs",
