@@ -29,7 +29,11 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   let query = supabase.from("products").select("*, categories!inner(slug)");
 
   if (filters.category) query = query.eq("categories.slug", filters.category);
-  if (filters.q) query = query.ilike("name", `%${filters.q}%`);
+  if (filters.q) {
+    // Strip PostgREST or-syntax chars so user input can't break the filter.
+    const q = filters.q.replace(/[,()]/g, " ").trim();
+    if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`);
+  }
 
   switch (filters.sort) {
     case "price-asc":

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/components/cart/cart-context";
+import { SearchDialog } from "@/components/search-dialog";
 import { cartCount } from "@/lib/cart";
 
 /**
@@ -21,6 +22,7 @@ export function Navbar() {
           Volt<span className="text-accent">Store</span>
         </Link>
         <div className="flex items-center gap-6 text-sm">
+          <SearchDialog />
           <Link href="/products" className="hover:text-accent transition-colors">
             Products
           </Link>
