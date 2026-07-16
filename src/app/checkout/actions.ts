@@ -1,12 +1,15 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createStripeClient } from "@/lib/stripe";
 import { createPaypalOrders } from "@/lib/paypal";
 import { createXenditInvoices } from "@/lib/xendit";
 import { usdToIdrRate } from "@/lib/fx";
+import { paymentMethods } from "@/lib/payments";
 import { siteUrl } from "@/lib/site-url";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validation";
 
@@ -16,13 +19,16 @@ type PendingOrder = {
   orderId: string;
   total: number;
   email?: string;
+  accessToken?: string; // guest orders only — grants confirmation page access
   lines: { name: string; qty: number; unitPrice: number }[];
 };
 
 /**
- * Shared by both providers. Security: requires auth, validates input with
- * Zod, re-reads prices from DB (never trusts client totals), RLS enforces
- * ownership. Order starts 'pending'; provider callback marks it 'paid'.
+ * Shared by all providers. Security: validates input with Zod, re-reads
+ * prices from DB (never trusts client totals), RLS enforces ownership.
+ * Guests (email required) insert via admin client — RLS would block them —
+ * and get an access token for the confirmation page.
+ * Order starts 'pending'; provider callback marks it 'paid'.
  * @param {CheckoutInput} input cart items (ids + qty only)
  * @return {Promise<PendingOrder | { error: string }>} pending order or error
  */
@@ -36,7 +42,21 @@ async function createPendingOrder(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const email = user?.email ?? parsed.data.email;
+  if (!user && !email) return { error: "Email is required for guest checkout." };
+
+  // Guest checkout has no auth gate — rate limit per IP so bots can't flood
+  // the orders table (10/hour, fixed window in the DB).
+  if (!user) {
+    const ip =
+      (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { data: allowed } = await createAdminClient().rpc("bump_rate_limit", {
+      p_key: `guest-checkout:${ip}`,
+      p_window: "1 hour",
+      p_max: 10,
+    });
+    if (!allowed) return { error: "Too many orders from your network. Try again later." };
+  }
 
   const ids = parsed.data.items.map((i) => i.productId);
   const { data: products, error: productsError } = await supabase
@@ -55,14 +75,21 @@ async function createPendingOrder(
     total += Number(product.price) * item.qty; // DB price, not client price
   }
 
-  const { data: order, error: orderError } = await supabase
+  // Guest inserts bypass RLS (owner-only policies) via the admin client.
+  const db = user ? supabase : createAdminClient();
+  const { data: order, error: orderError } = await db
     .from("orders")
-    .insert({ user_id: user.id, total, status: "pending" })
-    .select("id")
+    .insert({
+      user_id: user?.id ?? null,
+      email: user ? null : email, // guest contact; users resolve via auth.users
+      total,
+      status: "pending",
+    })
+    .select("id, access_token")
     .single();
   if (orderError || !order) return { error: "Could not create order." };
 
-  const { error: itemsError } = await supabase.from("order_items").insert(
+  const { error: itemsError } = await db.from("order_items").insert(
     parsed.data.items.map((i) => ({
       order_id: order.id,
       product_id: i.productId,
@@ -75,7 +102,8 @@ async function createPendingOrder(
   return {
     orderId: order.id,
     total,
-    email: user.email,
+    email,
+    accessToken: user ? undefined : (order.access_token as string),
     lines: parsed.data.items.map((i) => {
       const product = productById.get(i.productId)!;
       return { name: product.name, qty: i.qty, unitPrice: Number(product.price) };
@@ -89,6 +117,7 @@ async function createPendingOrder(
  * @return {Promise<CheckoutState>} error state (redirects to Stripe on success)
  */
 export async function startCheckout(input: CheckoutInput): Promise<CheckoutState> {
+  if (!paymentMethods.stripe) return { error: "Payment method unavailable." };
   const pending = await createPendingOrder(input);
   if ("error" in pending) return pending;
 
@@ -106,7 +135,9 @@ export async function startCheckout(input: CheckoutInput): Promise<CheckoutState
         product_data: { name: line.name },
       },
     })),
-    success_url: `${siteUrl()}/orders/${pending.orderId}`,
+    success_url: `${siteUrl()}/orders/${pending.orderId}${
+      pending.accessToken ? `?token=${pending.accessToken}` : ""
+    }`,
     cancel_url: `${siteUrl()}/checkout`,
   });
   if (!session.url) return { error: "Could not start payment." };
@@ -121,6 +152,7 @@ export async function startCheckout(input: CheckoutInput): Promise<CheckoutState
  * @return {Promise<CheckoutState>} error state (redirects to PayPal on success)
  */
 export async function startPaypalCheckout(input: CheckoutInput): Promise<CheckoutState> {
+  if (!paymentMethods.paypal) return { error: "Payment method unavailable." };
   const pending = await createPendingOrder(input);
   if ("error" in pending) return pending;
 
@@ -153,6 +185,7 @@ export async function startPaypalCheckout(input: CheckoutInput): Promise<Checkou
  * @return {Promise<CheckoutState>} error state (redirects to Xendit on success)
  */
 export async function startXenditCheckout(input: CheckoutInput): Promise<CheckoutState> {
+  if (!paymentMethods.xendit) return { error: "Payment method unavailable." };
   const pending = await createPendingOrder(input);
   if ("error" in pending) return pending;
 
