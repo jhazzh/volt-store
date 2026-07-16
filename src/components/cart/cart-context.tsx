@@ -41,7 +41,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {
       // corrupted storage — start empty
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded(true);
   }, []);
 

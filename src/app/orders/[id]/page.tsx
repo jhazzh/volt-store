@@ -19,6 +19,14 @@ const ORDER_SELECT =
 
 const TOKEN_GUESSES_PER_HOUR = 30;
 
+function isLockedOut(guesses: { count: number; window_start: string } | null) {
+  return (
+    !!guesses &&
+    guesses.count >= TOKEN_GUESSES_PER_HOUR &&
+    Date.now() - new Date(guesses.window_start).getTime() < 3_600_000
+  );
+}
+
 type OrderRow = {
   id: string;
   total: number;
@@ -55,12 +63,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
       .select("count, window_start")
       .eq("key", key)
       .maybeSingle();
-    const locked =
-      guesses &&
-      guesses.count >= TOKEN_GUESSES_PER_HOUR &&
-      Date.now() - new Date(guesses.window_start).getTime() < 3_600_000;
-
-    if (!locked) {
+    if (!isLockedOut(guesses)) {
       ({ data: order } = await admin
         .from("orders")
         .select(ORDER_SELECT)
