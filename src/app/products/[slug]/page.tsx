@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ViewTransition } from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
@@ -67,14 +68,16 @@ export default async function ProductPage({ params }: Props) {
       <div className="grid gap-8 md:grid-cols-2">
         <div className="relative aspect-square overflow-hidden rounded-xl bg-card">
           {product.image_url && (
-            <Image
-              src={product.image_url}
-              alt={product.name}
-              fill
-              loading="eager"
-              sizes="(min-width: 768px) 50vw, 100vw"
-              className="object-cover"
-            />
+            <ViewTransition name={`product-image-${product.id}`} share="morph">
+              <Image
+                src={product.image_url}
+                alt={product.name}
+                fill
+                loading="eager"
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="object-cover"
+              />
+            </ViewTransition>
           )}
         </div>
         <div className="flex flex-col">

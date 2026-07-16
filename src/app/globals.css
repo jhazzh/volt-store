@@ -38,6 +38,33 @@ body {
   color: var(--foreground);
 }
 
+/* The transition overlay must not swallow clicks — page stays interactive
+   while the morph plays. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* Product image morph (card → detail). Ease-out curve reads smoother than the
+   browser default; mid-flight blur hides snapshot interpolation artifacts. */
+::view-transition-group(.morph) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Keep the page cross-fade quick so the morph is the star. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
 /* WCAG 2.4.7: visible keyboard focus (not shown for mouse via :focus-visible). */
 *:focus-visible {
   outline: 2px solid var(--accent);

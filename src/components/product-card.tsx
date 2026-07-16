@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
@@ -21,14 +22,16 @@ export function ProductCard({
     >
       <div className="relative aspect-square overflow-hidden rounded-lg bg-border">
         {product.image_url && (
-          <Image
-            src={product.image_url}
-            alt={product.name}
-            fill
-            loading={eager ? "eager" : "lazy"}
-            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+          <ViewTransition name={`product-image-${product.id}`} share="morph">
+            <Image
+              src={product.image_url}
+              alt={product.name}
+              fill
+              loading={eager ? "eager" : "lazy"}
+              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          </ViewTransition>
         )}
       </div>
       <div className="mt-3 flex items-start justify-between gap-2">

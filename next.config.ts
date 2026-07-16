@@ -24,6 +24,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    viewTransition: true, // card → detail image morph
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "picsum.photos" },
