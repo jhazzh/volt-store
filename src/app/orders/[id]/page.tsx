@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ClearCart } from "@/components/cart/clear-cart";
 import { createClient } from "@/lib/supabase/server";
@@ -15,6 +16,8 @@ type Props = {
 
 const ORDER_SELECT =
   "id, total, status, created_at, order_items(qty, unit_price, products(name))";
+
+const TOKEN_GUESSES_PER_HOUR = 30;
 
 type OrderRow = {
   id: string;
@@ -40,13 +43,39 @@ export default async function OrderPage({ params, searchParams }: Props) {
   // grants read. Scoped to user_id null so a leaked URL never exposes an
   // account order.
   if (!order && typeof token === "string" && token) {
-    ({ data: order } = await createAdminClient()
-      .from("orders")
-      .select(ORDER_SELECT)
-      .eq("id", id)
-      .eq("access_token", token)
-      .is("user_id", null)
-      .maybeSingle<OrderRow>());
+    const admin = createAdminClient();
+    const ip =
+      (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const key = `order-token:${ip}`;
+
+    // Only wrong tokens count (bumped below) — a real buyer refreshing their
+    // confirmation never locks themselves out.
+    const { data: guesses } = await admin
+      .from("rate_limits")
+      .select("count, window_start")
+      .eq("key", key)
+      .maybeSingle();
+    const locked =
+      guesses &&
+      guesses.count >= TOKEN_GUESSES_PER_HOUR &&
+      Date.now() - new Date(guesses.window_start).getTime() < 3_600_000;
+
+    if (!locked) {
+      ({ data: order } = await admin
+        .from("orders")
+        .select(ORDER_SELECT)
+        .eq("id", id)
+        .eq("access_token", token)
+        .is("user_id", null)
+        .maybeSingle<OrderRow>());
+      if (!order) {
+        await admin.rpc("bump_rate_limit", {
+          p_key: key,
+          p_window: "1 hour",
+          p_max: TOKEN_GUESSES_PER_HOUR,
+        });
+      }
+    }
   }
   if (!order) notFound();
 
