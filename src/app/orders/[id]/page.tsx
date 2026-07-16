@@ -3,11 +3,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClearCart } from "@/components/cart/clear-cart";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Order confirmed" };
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ token?: string }>;
+};
+
+const ORDER_SELECT =
+  "id, total, status, created_at, order_items(qty, unit_price, products(name))";
 
 type OrderRow = {
   id: string;
@@ -17,16 +24,30 @@ type OrderRow = {
   order_items: { qty: number; unit_price: number; products: { name: string } | null }[];
 };
 
-export default async function OrderPage({ params }: Props) {
+export default async function OrderPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { token } = await searchParams;
   const supabase = await createClient();
 
   // RLS: only the owner can read this order.
-  const { data: order } = await supabase
+  let { data: order } = await supabase
     .from("orders")
-    .select("id, total, status, created_at, order_items(qty, unit_price, products(name))")
+    .select(ORDER_SELECT)
     .eq("id", id)
     .maybeSingle<OrderRow>(); // many-to-one join — override supabase-js array inference
+
+  // Guest orders have no owner session; the access token from the success URL
+  // grants read. Scoped to user_id null so a leaked URL never exposes an
+  // account order.
+  if (!order && typeof token === "string" && token) {
+    ({ data: order } = await createAdminClient()
+      .from("orders")
+      .select(ORDER_SELECT)
+      .eq("id", id)
+      .eq("access_token", token)
+      .is("user_id", null)
+      .maybeSingle<OrderRow>());
+  }
   if (!order) notFound();
 
   // 'pending' right after Stripe redirect = webhook not landed yet.

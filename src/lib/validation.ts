@@ -2,6 +2,7 @@ import { z } from "zod";
 
 /** Checkout payload — server re-reads prices; client sends only ids + qty. */
 export const checkoutSchema = z.object({
+  email: z.email().optional(), // guest checkout receipt; ignored when logged in
   items: z
     .array(
       z.object({

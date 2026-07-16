@@ -29,11 +29,23 @@ export async function GET(request: NextRequest) {
 
   // Admin client: no user session guarantees here, RLS would block. The
   // status filter makes a replayed return URL idempotent.
-  await createAdminClient()
+  const admin = createAdminClient();
+  await admin
     .from("orders")
     .update({ status: "paid", paypal_order_id: token })
     .eq("id", orderId)
     .eq("status", "pending");
 
-  redirect(`/orders/${orderId}`);
+  // Guest orders (no user) need the access token to view the confirmation.
+  const { data: order } = await admin
+    .from("orders")
+    .select("user_id, access_token")
+    .eq("id", orderId)
+    .single();
+
+  redirect(
+    order && !order.user_id
+      ? `/orders/${orderId}?token=${order.access_token}`
+      : `/orders/${orderId}`
+  );
 }
