@@ -38,5 +38,6 @@ describe("ProductCard", () => {
 
     rerender(<ProductCard product={product} eager />);
     expect(screen.getByRole("img")).toHaveAttribute("loading", "eager");
+    expect(screen.getByRole("img")).toHaveAttribute("fetchpriority", "high");
   });
 });
