@@ -4,10 +4,18 @@ import { test, expect, type Page } from "@playwright/test";
 // Override: PERF_URL=http://localhost:3000 npm run test:perf
 const BASE = process.env.PERF_URL ?? "https://volt-store-theta.vercel.app";
 
-const PAGES = [
+/** First product link on the PLP — keeps the test independent of seed names. */
+async function firstProductPath(): Promise<string> {
+  const html = await (await fetch(`${BASE}/products`)).text();
+  const href = html.match(/href="(\/products\/[^"]+)"/)?.[1];
+  if (!href) throw new Error(`No product link found on ${BASE}/products`);
+  return href;
+}
+
+const PAGES: { name: string; path: string | (() => Promise<string>) }[] = [
   { name: "home", path: "/" },
   { name: "product list", path: "/products" },
-  { name: "product detail", path: "/products/nimbus-headphones" },
+  { name: "product detail", path: firstProductPath },
 ];
 
 // Google "good" thresholds
@@ -45,7 +53,8 @@ for (const { name, path } of PAGES) {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
 
-    await page.goto(BASE + path, { waitUntil: "load" });
+    const target = typeof path === "string" ? path : await path();
+    await page.goto(BASE + target, { waitUntil: "load" });
     const { lcp, cls, ttfb } = await collectVitals(page);
 
     console.log(

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { openFirstProduct } from "./helpers";
 
 // Guest checkout rate limit, end to end: 10 orders go through (each redirects
 // to Stripe — we abort that navigation, i.e. "cancel back"), the 11th is
@@ -64,7 +65,7 @@ test("guest checkout blocks the 11th order per IP", async ({ page }) => {
   console.log("[rate-limit]   → goto /products");
   await page.goto("/products");
   console.log("[rate-limit]   → click product link");
-  await page.getByRole("link", { name: /Nimbus Headphones/ }).click();
+  await openFirstProduct(page);
   console.log("[rate-limit]   → click Add to cart");
   await page.getByRole("button", { name: "Add to cart" }).click();
   console.log("[rate-limit]   → cart filled");

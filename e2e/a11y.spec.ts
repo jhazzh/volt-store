@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { openFirstProduct } from "./helpers";
 
 // Automated WCAG scan (axe). Catches ~30-40% of issues; the cart-drawer
 // keyboard test below covers focus/trap behaviour axe can't detect.
@@ -23,7 +24,7 @@ test("products page has no a11y violations", async ({ page }) => {
 
 test("open cart drawer has no a11y violations", async ({ page }) => {
   await page.goto("/products");
-  await page.getByRole("link", { name: /Nimbus Headphones/ }).click();
+  await openFirstProduct(page);
   await page.getByRole("button", { name: "Add to cart" }).click();
   await expect(page.getByRole("dialog", { name: "Shopping cart" })).toBeVisible();
   const { violations } = await scan(page);
@@ -33,7 +34,7 @@ test("open cart drawer has no a11y violations", async ({ page }) => {
 // Focus behaviour axe can't see: on-open focus, trap, Escape, restore.
 test("cart drawer traps and restores keyboard focus", async ({ page }) => {
   await page.goto("/products");
-  await page.getByRole("link", { name: /Nimbus Headphones/ }).click();
+  await openFirstProduct(page);
   await page.getByRole("button", { name: "Add to cart" }).click();
 
   const cart = page.getByRole("dialog", { name: "Shopping cart" });
