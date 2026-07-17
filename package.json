@@ -10,6 +10,7 @@
     "test": "vitest --project=unit",
     "test:e2e": "playwright test",
     "test:a11y": "playwright test a11y",
+    "test:perf": "playwright test perf",
     "seed": "node --env-file=.env.local --experimental-websocket scripts/seed.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
