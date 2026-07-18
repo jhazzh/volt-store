@@ -1,19 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ProductCard } from "@/components/product-card";
-import type { Product } from "@/lib/types";
+import { makeProduct } from "@/lib/test/fixtures";
 
-const product: Product = {
-  id: "p1",
-  name: "Nimbus Headphones",
-  slug: "nimbus-headphones",
-  description: "Wireless over-ear.",
-  price: 199,
-  stock: 5,
-  image_url: "/nimbus.jpg", // local path avoids next/image remote-host check in jsdom
-  category_id: "c1",
-  created_at: "2026-01-01T00:00:00Z",
-};
+// image_url is a local path to avoid next/image remote-host check in jsdom.
+const product = makeProduct();
 
 describe("ProductCard", () => {
   it("shows name, formatted price, and links to the PDP", () => {

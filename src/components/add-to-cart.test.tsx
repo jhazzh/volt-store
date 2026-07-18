@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AddToCart } from "@/components/add-to-cart";
-import type { Product } from "@/lib/types";
+import { makeProduct } from "@/lib/test/fixtures";
 
 const dispatch = vi.fn();
 const setOpen = vi.fn();
@@ -12,17 +12,7 @@ vi.mock("@/components/cart/cart-context", () => ({
   useCart: () => ({ dispatch, setOpen, items: [], isOpen: false }),
 }));
 
-const product: Product = {
-  id: "p1",
-  name: "Nimbus Headphones",
-  slug: "nimbus-headphones",
-  description: "",
-  price: 199,
-  stock: 5,
-  image_url: null,
-  category_id: "c1",
-  created_at: "2026-01-01T00:00:00Z",
-};
+const product = makeProduct({ description: "", image_url: null });
 
 describe("AddToCart", () => {
   beforeEach(() => {

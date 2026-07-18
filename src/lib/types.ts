@@ -10,7 +10,10 @@ export type Product = {
   slug: string;
   description: string;
   price: number;
-  stock: number;
+  stock: number | null;
+  product_type: "simple" | "digital";
+  delivery_type: "file" | "key" | "access" | "url" | null;
+  delivery_value: string | null;
   image_url: string | null;
   category_id: string | null;
   created_at: string;
