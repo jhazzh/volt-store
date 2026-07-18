@@ -40,7 +40,7 @@ export function ProductForm({
           name="slug"
           defaultValue={product?.slug}
           required
-          pattern="[a-z0-9-]+"
+          pattern="[a-z0-9\-]+"
           className={field}
         />
       </div>
