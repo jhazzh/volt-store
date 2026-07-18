@@ -3,6 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ClearCart } from "@/components/cart/clear-cart";
+import { DownloadButton } from "@/components/download-button";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPrice } from "@/lib/format";
@@ -15,7 +16,7 @@ type Props = {
 };
 
 const ORDER_SELECT =
-  "id, total, status, created_at, order_items(qty, unit_price, products(name))";
+  "id, total, status, created_at, order_items(id, qty, unit_price, products(name, product_type))";
 
 const TOKEN_GUESSES_PER_HOUR = 30;
 
@@ -32,7 +33,12 @@ type OrderRow = {
   total: number;
   status: string;
   created_at: string;
-  order_items: { qty: number; unit_price: number; products: { name: string } | null }[];
+  order_items: {
+    id: string;
+    qty: number;
+    unit_price: number;
+    products: { name: string; product_type: string } | null;
+  }[];
 };
 
 export default async function OrderPage({ params, searchParams }: Props) {
@@ -103,11 +109,17 @@ export default async function OrderPage({ params, searchParams }: Props) {
 
       <ul className="mx-auto mt-8 max-w-md space-y-2 text-left text-sm">
         {order.order_items.map((item, i) => (
-          <li key={i} className="flex justify-between border-b border-border pb-2">
+          <li key={i} className="flex items-center justify-between border-b border-border pb-2">
             <span>
               {item.products?.name} × {item.qty}
             </span>
-            <span>{formatPrice(Number(item.unit_price) * item.qty)}</span>
+            <span className="flex items-center gap-3">
+              {order.status === "paid" &&
+                item.products?.product_type === "digital" && (
+                  <DownloadButton orderItemId={item.id} token={token} />
+                )}
+              {formatPrice(Number(item.unit_price) * item.qty)}
+            </span>
           </li>
         ))}
         <li className="flex justify-between pt-1 font-semibold">

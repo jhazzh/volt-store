@@ -1,18 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { ProductCard } from "./product-card";
-import type { Product } from "@/lib/types";
+import { makeProduct } from "@/lib/test/fixtures";
 
-const base: Product = {
-  id: "p1",
-  name: "Nimbus Headphones",
-  slug: "nimbus-headphones",
-  description: "Wireless over-ear headphones.",
-  price: 199,
-  stock: 5,
+const base = makeProduct({
   image_url: "https://picsum.photos/seed/nimbus/800/800",
-  category_id: "c1",
-  created_at: "2026-01-01T00:00:00Z",
-};
+});
 
 const meta = {
   title: "Store/ProductCard",

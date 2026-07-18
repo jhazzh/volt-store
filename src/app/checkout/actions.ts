@@ -71,7 +71,9 @@ async function createPendingOrder(
   let total = 0;
   for (const item of parsed.data.items) {
     const product = productById.get(item.productId)!;
-    if (product.stock < item.qty) return { error: "Insufficient stock." };
+    // null stock = digital good, unlimited copies.
+    if (product.stock !== null && product.stock < item.qty)
+      return { error: "Insufficient stock." };
     total += Number(product.price) * item.qty; // DB price, not client price
   }
 

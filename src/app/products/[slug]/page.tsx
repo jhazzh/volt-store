@@ -50,7 +50,7 @@ export default async function ProductPage({ params }: Props) {
       price: product.price,
       priceCurrency: "USD",
       availability:
-        product.stock > 0
+        product.stock === null || product.stock > 0
           ? "https://schema.org/InStock"
           : "https://schema.org/OutOfStock",
     },
@@ -87,7 +87,11 @@ export default async function ProductPage({ params }: Props) {
           </p>
           <p className="mt-4 leading-relaxed text-muted">{product.description}</p>
           <p className="mt-4 text-sm text-muted">
-            {product.stock > 0 ? `${product.stock} in stock` : "Currently unavailable"}
+            {product.stock === null
+              ? "Instant digital delivery"
+              : product.stock > 0
+                ? `${product.stock} in stock`
+                : "Currently unavailable"}
           </p>
           <div className="mt-8 max-w-sm">
             <AddToCart product={product} />

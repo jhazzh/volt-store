@@ -12,6 +12,8 @@
     "test:a11y": "playwright test a11y",
     "test:perf": "playwright test perf",
     "seed": "node --env-file=.env.local --experimental-websocket scripts/seed.mjs",
+    "seed:digital": "node --env-file=.env.local --experimental-websocket scripts/seed-digital.mjs",
+    "create:bucket": "node --env-file=.env.local --experimental-websocket scripts/create-bucket.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

@@ -9,7 +9,7 @@ import type { Product } from "@/lib/types";
  */
 export function AddToCart({ product }: { product: Product }) {
   const { dispatch, setOpen } = useCart();
-  const out = product.stock === 0;
+  const out = product.stock === 0; // null (digital) is never out
 
   return (
     <button
