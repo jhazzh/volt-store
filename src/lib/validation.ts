@@ -46,3 +46,14 @@ export const productSchema = z
   });
 
 export type ProductInput = z.infer<typeof productSchema>;
+
+/** Admin category form. */
+export const categorySchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  slug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9-]+$/, "lowercase letters, numbers, and dashes only"),
+});
+
+export type CategoryInput = z.infer<typeof categorySchema>;
