@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest --project=unit",
     "test:e2e": "playwright test",
+    "test:walk": "INCLUDE_WALK=1 playwright test purchase-walk",
     "test:a11y": "playwright test a11y",
     "test:perf": "playwright test perf",
     "seed": "node --env-file=.env.local --experimental-websocket scripts/seed.mjs",
