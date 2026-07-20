@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { mergeSearchResults } from "@/lib/merge";
 import type { Category, Product } from "@/lib/types";
 
 /**
@@ -49,6 +50,58 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   const { data, error } = await query;
   if (error) throw new Error(`getProducts: ${error.message}`);
   return data ?? [];
+}
+
+/**
+ * Products ranked by meaning, not keywords. Returns [] when embedding is
+ * unavailable so callers degrade to keyword search.
+ * @param {string} q search text
+ * @param {number} limit max results
+ * @return {Promise<Product[]>} semantically nearest products
+ */
+export async function searchProductsSemantic(
+  q: string,
+  limit = 8
+): Promise<Product[]> {
+  const { embedText } = await import("@/lib/embed");
+  const embedding = await embedText(q);
+  if (!embedding) return [];
+
+  const supabase = createStaticClient();
+  const { data, error } = await supabase.rpc("match_products", {
+    query_embedding: embedding,
+    match_margin: 0.05,
+    match_count: limit,
+  });
+  if (error) return [];
+  return data ?? [];
+}
+
+/**
+ * Catalog search: keyword matches first, then semantic ones the ilike missed.
+ * Without `q` this is plain getProducts, so category/sort browsing is unchanged.
+ * @param {ProductFilters} filters PLP filters
+ * @return {Promise<Product[]>} matching products
+ */
+export async function searchProducts(
+  filters: ProductFilters = {}
+): Promise<Product[]> {
+  const q = filters.q?.trim();
+  if (!q) return getProducts(filters);
+
+  const [keyword, semantic] = await Promise.all([
+    getProducts(filters),
+    searchProductsSemantic(q, 24),
+  ]);
+
+  // Semantic ignores category, so re-apply it here to keep the filter honest.
+  const allowedIds = filters.category
+    ? new Set(
+        (await getProducts({ category: filters.category })).map((p) => p.id)
+      )
+    : null;
+
+  return mergeSearchResults(keyword, semantic, allowedIds, filters.sort);
 }
 
 /**

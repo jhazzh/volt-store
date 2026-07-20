@@ -14,6 +14,7 @@
     "test:perf": "playwright test perf",
     "seed": "node --env-file=.env.local --experimental-websocket scripts/seed.mjs",
     "seed:digital": "node --env-file=.env.local --experimental-websocket scripts/seed-digital.mjs",
+    "embed": "node --env-file=.env.local --experimental-websocket scripts/embed-products.mjs",
     "create:bucket": "node --env-file=.env.local --experimental-websocket scripts/create-bucket.mjs",
     "make:admin": "node --env-file=.env.local --experimental-websocket scripts/make-admin.mjs",
     "storybook": "storybook dev -p 6006",
