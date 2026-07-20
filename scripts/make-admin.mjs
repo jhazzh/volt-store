@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Usage: npm run make:admin -- you@example.com
-const email = process.argv[2];
+// Usage: npm run make:admin -- you@example.com [--prod]
+// Skip flags so --prod can appear anywhere in the arguments.
+const email = process.argv.slice(2).find((a) => !a.startsWith("--"));
 if (!email) {
   console.error("Usage: npm run make:admin -- <email>");
   process.exit(1);
