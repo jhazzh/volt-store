@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { mergeSearchResults } from "@/lib/merge";
 import type { Category, Product } from "@/lib/types";
 
 /**
@@ -94,25 +95,13 @@ export async function searchProducts(
   ]);
 
   // Semantic ignores category, so re-apply it here to keep the filter honest.
-  const allowed = filters.category
+  const allowedIds = filters.category
     ? new Set(
         (await getProducts({ category: filters.category })).map((p) => p.id)
       )
     : null;
 
-  const seen = new Set(keyword.map((p) => p.id));
-  const extra = semantic.filter(
-    (p) => !seen.has(p.id) && (!allowed || allowed.has(p.id))
-  );
-
-  // An explicit sort must win over relevance ordering.
-  if (filters.sort === "price-asc" || filters.sort === "price-desc") {
-    const dir = filters.sort === "price-asc" ? 1 : -1;
-    return [...keyword, ...extra].sort(
-      (a, b) => (Number(a.price) - Number(b.price)) * dir
-    );
-  }
-  return [...keyword, ...extra];
+  return mergeSearchResults(keyword, semantic, allowedIds, filters.sort);
 }
 
 /**
