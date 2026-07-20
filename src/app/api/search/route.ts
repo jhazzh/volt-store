@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { getProducts } from "@/lib/data";
+import { searchProducts } from "@/lib/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type SearchResult = {
@@ -33,7 +33,10 @@ export async function GET(request: Request) {
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) return Response.json({ results: [] });
 
-  const products = await getProducts({ q });
+  // Same keyword + semantic merge the /products page uses, so the pop-up and
+  // "See all results" never disagree.
+  const products = await searchProducts({ q });
+
   const results: SearchResult[] = products.slice(0, 8).map((p) => ({
     type: "product",
     id: p.id,

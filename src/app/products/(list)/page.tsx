@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Filters } from "@/components/filters";
 import { ProductCard } from "@/components/product-card";
-import { getCategories, getProducts, type ProductFilters } from "@/lib/data";
+import { getCategories, searchProducts, type ProductFilters } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Products",
@@ -21,7 +21,7 @@ export default async function ProductsPage({ searchParams }: Props) {
   };
 
   const [products, categories] = await Promise.all([
-    getProducts(filters),
+    searchProducts(filters),
     getCategories(),
   ]);
 

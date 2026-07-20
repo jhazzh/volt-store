@@ -52,6 +52,70 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
 }
 
 /**
+ * Products ranked by meaning, not keywords. Returns [] when embedding is
+ * unavailable so callers degrade to keyword search.
+ * @param {string} q search text
+ * @param {number} limit max results
+ * @return {Promise<Product[]>} semantically nearest products
+ */
+export async function searchProductsSemantic(
+  q: string,
+  limit = 8
+): Promise<Product[]> {
+  const { embedText } = await import("@/lib/embed");
+  const embedding = await embedText(q);
+  if (!embedding) return [];
+
+  const supabase = createStaticClient();
+  const { data, error } = await supabase.rpc("match_products", {
+    query_embedding: embedding,
+    match_margin: 0.05,
+    match_count: limit,
+  });
+  if (error) return [];
+  return data ?? [];
+}
+
+/**
+ * Catalog search: keyword matches first, then semantic ones the ilike missed.
+ * Without `q` this is plain getProducts, so category/sort browsing is unchanged.
+ * @param {ProductFilters} filters PLP filters
+ * @return {Promise<Product[]>} matching products
+ */
+export async function searchProducts(
+  filters: ProductFilters = {}
+): Promise<Product[]> {
+  const q = filters.q?.trim();
+  if (!q) return getProducts(filters);
+
+  const [keyword, semantic] = await Promise.all([
+    getProducts(filters),
+    searchProductsSemantic(q, 24),
+  ]);
+
+  // Semantic ignores category, so re-apply it here to keep the filter honest.
+  const allowed = filters.category
+    ? new Set(
+        (await getProducts({ category: filters.category })).map((p) => p.id)
+      )
+    : null;
+
+  const seen = new Set(keyword.map((p) => p.id));
+  const extra = semantic.filter(
+    (p) => !seen.has(p.id) && (!allowed || allowed.has(p.id))
+  );
+
+  // An explicit sort must win over relevance ordering.
+  if (filters.sort === "price-asc" || filters.sort === "price-desc") {
+    const dir = filters.sort === "price-asc" ? 1 : -1;
+    return [...keyword, ...extra].sort(
+      (a, b) => (Number(a.price) - Number(b.price)) * dir
+    );
+  }
+  return [...keyword, ...extra];
+}
+
+/**
  * @param {string} slug product slug
  * @return {Promise<Product | null>} product or null
  */
