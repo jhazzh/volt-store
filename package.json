@@ -18,6 +18,7 @@
     "embed": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/embed-products.mjs",
     "create:bucket": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/create-bucket.mjs",
     "make:admin": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/make-admin.mjs",
+    "revalidate": "node --import ./scripts/load-env.mjs scripts/revalidate.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
