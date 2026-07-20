@@ -50,8 +50,10 @@ test("login brute force is rate limited by the application", async ({ page }) =>
       await expect(error).not.toHaveText(/Too many login attempts/);
     }
 
-    // Change the form value so this is a distinct submission after the tenth
-    // failed attempt, even when React preserves the prior error state.
+    // Re-touch both fields so the form dispatches a fresh server-action
+    // submission after the tenth attempt; filling only one field leaves the
+    // click a no-op with useActionState.
+    await page.getByLabel("Email").fill(testEmail("brute-force-test"));
     await page.getByLabel("Password").fill("wrong-password-blocked");
     const submission = page.waitForResponse(
       (response) =>
