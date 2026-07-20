@@ -35,6 +35,10 @@ yarn-error.log*
 # ...but the template carries no real values, so track it.
 !.env.example
 
+# supabase cli scratch state
+supabase/.branches
+supabase/.temp
+
 # vercel
 .vercel
 
