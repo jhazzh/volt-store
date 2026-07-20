@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { embedProduct } from "@/lib/embed";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productSchema } from "@/lib/validation";
@@ -81,8 +83,17 @@ export async function createProduct(_prev: State, formData: FormData): Promise<S
   if (!built.row) return { error: built.error };
 
   const supabase = await createClient(); // admin RLS gates the write
-  const { error } = await supabase.from("products").insert(built.row);
+  const { data, error } = await supabase
+    .from("products")
+    .insert(built.row)
+    .select("id")
+    .single();
   if (error) return { error: error.message };
+
+  // Off the response path — the admin shouldn't wait on the search index.
+  after(() =>
+    embedProduct(data.id, built.row.name as string, built.row.description as string)
+  );
 
   revalidatePath("/admin/products");
   revalidatePath("/products");
@@ -99,8 +110,21 @@ export async function updateProduct(
   if (!built.row) return { error: built.error };
 
   const supabase = await createClient();
+  // Read the old text first: re-embedding is only worth it if it changed.
+  const { data: before } = await supabase
+    .from("products")
+    .select("name, description")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("products").update(built.row).eq("id", id);
   if (error) return { error: error.message };
+
+  const name = built.row.name as string;
+  const description = built.row.description as string;
+  if (!before || before.name !== name || before.description !== description) {
+    after(() => embedProduct(id, name, description));
+  }
 
   revalidatePath("/admin/products");
   revalidatePath("/products");
