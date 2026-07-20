@@ -82,18 +82,17 @@ export async function createProduct(_prev: State, formData: FormData): Promise<S
   const built = await toRow(parseForm(formData), formData);
   if (!built.row) return { error: built.error };
 
+  const row = built.row;
   const supabase = await createClient(); // admin RLS gates the write
   const { data, error } = await supabase
     .from("products")
-    .insert(built.row)
+    .insert(row)
     .select("id")
     .single();
   if (error) return { error: error.message };
 
   // Off the response path — the admin shouldn't wait on the search index.
-  after(() =>
-    embedProduct(data.id, built.row.name as string, built.row.description as string)
-  );
+  after(() => embedProduct(data.id, row.name as string, row.description as string));
 
   revalidatePath("/admin/products");
   revalidatePath("/products");
@@ -109,6 +108,7 @@ export async function updateProduct(
   const built = await toRow(parseForm(formData), formData);
   if (!built.row) return { error: built.error };
 
+  const row = built.row;
   const supabase = await createClient();
   // Read the old text first: re-embedding is only worth it if it changed.
   const { data: before } = await supabase
@@ -117,11 +117,11 @@ export async function updateProduct(
     .eq("id", id)
     .maybeSingle();
 
-  const { error } = await supabase.from("products").update(built.row).eq("id", id);
+  const { error } = await supabase.from("products").update(row).eq("id", id);
   if (error) return { error: error.message };
 
-  const name = built.row.name as string;
-  const description = built.row.description as string;
+  const name = row.name as string;
+  const description = row.description as string;
   if (!before || before.name !== name || before.description !== description) {
     after(() => embedProduct(id, name, description));
   }
