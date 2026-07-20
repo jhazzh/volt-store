@@ -6,8 +6,11 @@ export default defineConfig({
   testIgnore: process.env.INCLUDE_WALK ? [] : ["**/purchase-walk.spec.ts"],
   use: {
     baseURL: "http://localhost:3000",
-    trace: "on", // scrub steps/DOM/network: npx playwright show-trace
-    video: "on",
+    // Traces can contain authenticated URLs and request data. Keep no browser
+    // artifacts by default; enable them temporarily while debugging locally.
+    trace: "off",
+    video: "off",
+    screenshot: "off",
   },
   webServer: {
     command: "npm run dev",

@@ -1,21 +1,12 @@
-import fs from "node:fs";
 import { expect, test } from "@playwright/test";
+import { assertSafeE2ETarget, env, runId, testEmail } from "./security";
 
 // Admin product management: a logged-in admin can create and delete a product;
 // the write is gated by requireAdmin() + admin RLS.
 
-const ADMIN_EMAIL = "admin-e2e@example.com";
-const ADMIN_PASSWORD = "admin-e2e-passw0rd";
-const SLUG = "e2e-digital-test";
-
-function env(name: string): string {
-  const fromFile = fs
-    .readFileSync(".env.local", "utf8")
-    .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1];
-  const value = process.env[name] ?? fromFile;
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
+const ADMIN_EMAIL = testEmail("admin-e2e");
+const ADMIN_PASSWORD = `E2e-${runId}-passw0rd!`;
+const SLUG = `e2e-digital-${runId}`;
 const API = () => env("NEXT_PUBLIC_SUPABASE_URL");
 function adminHeaders() {
   const key = env("SUPABASE_SECRET_KEY");
@@ -78,6 +69,7 @@ async function cleanup(userId?: string) {
 
 test("admin can create and delete a digital product", async ({ page }) => {
   test.setTimeout(60_000);
+  assertSafeE2ETarget();
   await cleanup();
   const userId = await createAdminUser();
 

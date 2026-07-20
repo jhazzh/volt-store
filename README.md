@@ -28,6 +28,7 @@ E-commerce storefront built with **Next.js 16 (App Router), React 19, TypeScript
 | Reading others' orders | RLS: `auth.uid() = user_id` ([0001_init.sql](supabase/migrations/0001_init.sql)) |
 | Price tampering | Checkout re-reads prices from DB, ignores client totals ([actions.ts](src/app/checkout/actions.ts)) |
 | Unauthenticated writes | Every action checks `auth.getUser()` first |
+| Login brute force | App-level, IP-scoped limit of 10 attempts/hour before Supabase Auth |
 | Input tampering | Zod validation on all action inputs |
 | XSS | React escaping; JSON-LD `<` escaped |
 | HTTP hardening | CSP, HSTS, X-Frame-Options via [next.config.ts](next.config.ts) |
@@ -54,6 +55,20 @@ npm run dev
 | `npm test` | Vitest unit tests (cart logic) |
 | `npm run test:e2e` | Playwright happy path |
 | `npm run lint` | ESLint |
+
+Side-effecting E2E specs (admin operations, rate-limit floods, token checks,
+and the purchase walk) fail closed. Run them only against local Supabase with:
+
+```bash
+E2E_TEST_MODE=1 npm run test:e2e
+```
+
+For a dedicated remote test project, add `E2E_ALLOW_REMOTE=1`. Never set that
+flag for a production project. Each run uses unique test users and records, so
+cleanup cannot remove data created by another run.
+
+Login attempts are capped at 10 per IP per hour by the application. The
+corresponding E2E check is included in the side-effecting test command above.
 
 ## CI
 

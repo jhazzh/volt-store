@@ -1,19 +1,10 @@
-import fs from "node:fs";
 import { expect, test } from "@playwright/test";
+import { assertSafeE2ETarget, env } from "./security";
 
 // /api/search is unauthenticated, so it's throttled per IP (30/min). This
 // floods it with 60 requests and asserts the limiter kicks in with a 429.
 
 const FLOOD = 60;
-
-function env(name: string): string {
-  const fromFile = fs
-    .readFileSync(".env.local", "utf8")
-    .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1];
-  const value = process.env[name] ?? fromFile;
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
 
 /** Clears the search rate-limit rows so each run starts with a fresh window. */
 async function cleanup() {
@@ -27,6 +18,7 @@ async function cleanup() {
 
 test("/api/search throttles a flood with 429", async ({ request }) => {
   test.setTimeout(60_000);
+  assertSafeE2ETarget();
   await cleanup();
   const codes: number[] = [];
   for (let i = 0; i < FLOOD; i++) {
@@ -48,6 +40,7 @@ test("/api/search throttles a flood with 429", async ({ request }) => {
 
 test("/api/search returns results for a real query", async ({ request }) => {
   // Sanity: the endpoint works within budget, so the flood test means something.
+  assertSafeE2ETarget();
   await cleanup();
   const res = await request.get("/api/search?q=he");
   expect(res.status()).toBe(200);

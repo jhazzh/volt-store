@@ -53,6 +53,7 @@ test.describe("Xendit webhook rejects forged calls", () => {
     external_id: "00000000-0000-4000-8000-000000000000",
     status: "PAID",
   });
+  const callbackToken = env("XENDIT_CALLBACK_TOKEN");
 
   test("no callback token → 401", async ({ request }) => {
     const res = await request.post(XENDIT, {
@@ -76,13 +77,14 @@ test.describe("Xendit webhook rejects forged calls", () => {
   test("valid token still needs a real order (idempotent status filter)", async ({
     request,
   }) => {
+    if (!callbackToken) throw new Error("XENDIT_CALLBACK_TOKEN not set");
     // Right token, but the order id is fake — the status='pending' filter
     // matches nothing, so no order flips to paid. Proves auth alone isn't
     // the only guard.
     const res = await request.post(XENDIT, {
       headers: {
         "content-type": "application/json",
-        "x-callback-token": env("XENDIT_CALLBACK_TOKEN"),
+        "x-callback-token": callbackToken,
       },
       data: fakeXenditPaid,
     });

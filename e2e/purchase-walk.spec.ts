@@ -1,19 +1,12 @@
-import fs from "node:fs";
 import { expect, test } from "@playwright/test";
+import { assertSafeE2ETarget, env, testEmail } from "./security";
 
 // Full purchase walk (Stripe test mode): buy the digital PDF as a guest,
 // pay with a test card, land on the order page, and download the file.
 // Requires `stripe listen --forward-to localhost:3000/api/webhooks/stripe`.
 
-const EMAIL = "purchase-walk@example.com";
+const EMAIL = testEmail("purchase-walk");
 const PRODUCT_SLUG = "getting-started-guide";
-
-function env(name: string): string {
-  const fromFile = fs
-    .readFileSync(".env.local", "utf8")
-    .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1];
-  return process.env[name] ?? fromFile ?? "";
-}
 
 async function cleanup() {
   const url = env("NEXT_PUBLIC_SUPABASE_URL");
@@ -26,6 +19,7 @@ async function cleanup() {
 
 test("guest buys the digital PDF and downloads it", async ({ page }) => {
   test.setTimeout(90_000);
+  assertSafeE2ETarget();
   await cleanup();
 
   // 1. Add the PDF to the cart from its product page.

@@ -1,21 +1,12 @@
-import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { assertSafeE2ETarget, env, testEmail } from "./security";
 
 // Guest order access control: the confirmation page must open only with the
 // exact access token — no token, wrong token, or garbage all 404. Brute force
 // is left to math (id + token are random UUIDs, ~2^122 each); this proves the
 // door is actually locked.
 
-const EMAIL = "order-token-test@example.com";
-
-function env(name: string): string {
-  const fromFile = fs
-    .readFileSync(".env.local", "utf8")
-    .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1];
-  const value = process.env[name] ?? fromFile;
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
+const EMAIL = testEmail("order-token-test");
 
 function adminHeaders() {
   const key = env("SUPABASE_SECRET_KEY");
@@ -58,6 +49,7 @@ async function status(page: Page, path: string): Promise<number> {
 
 test("guest order page opens only with the exact token", async ({ page }) => {
   test.setTimeout(120_000); // ~35 page renders on the dev server
+  assertSafeE2ETarget();
   await cleanup();
   const order = await createGuestOrder();
   console.log(`[order-token] test order ${order.id.slice(0, 8)}`);

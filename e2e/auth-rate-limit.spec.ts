@@ -1,41 +1,69 @@
-import fs from "node:fs";
 import { expect, test } from "@playwright/test";
+import { assertSafeE2ETarget, env, testEmail } from "./security";
 
-// Supabase enforces auth rate limits server-side (Dashboard → Auth → Rate
-// Limits). Hammer the password grant with wrong credentials until a 429 —
-// proves login brute force gets throttled before our app is ever involved.
-// Warning: also throttles real logins from this IP for a few minutes.
+// Login attempts are limited by the application, rather than relying on an
+// external provider's dashboard defaults. The DB function is atomic and the
+// admin client is server-only, so the counter cannot be bypassed by clients.
 
-const ATTEMPTS = 60; // > any sane limit; default is well below this
+const MAX_ATTEMPTS = 10;
 
-function env(name: string): string {
-  const fromFile = fs
-    .readFileSync(".env.local", "utf8")
-    .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1];
-  const value = process.env[name] ?? fromFile;
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
+async function cleanup() {
+  const url = env("NEXT_PUBLIC_SUPABASE_URL");
+  const key = env("SUPABASE_SECRET_KEY");
+  await fetch(`${url}/rest/v1/rate_limits?key=like.login:*`, {
+    method: "DELETE",
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
 }
 
-test("login brute force gets rate limited", async ({ request }) => {
-  test.setTimeout(120_000);
+async function rateLimitRows() {
   const url = env("NEXT_PUBLIC_SUPABASE_URL");
-  const key = env("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  const key = env("SUPABASE_SECRET_KEY");
+  const res = await fetch(`${url}/rest/v1/rate_limits?key=like.login:*&select=key,count`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  return res.json();
+}
 
-  let limitedAt = 0;
-  for (let i = 1; i <= ATTEMPTS; i++) {
-    const res = await request.post(`${url}/auth/v1/token?grant_type=password`, {
-      headers: { apikey: key, "Content-Type": "application/json" },
-      data: { email: "brute-force-test@example.com", password: `wrong-${i}` },
-    });
-    if (res.status() === 429) {
-      console.log(`[auth-rate-limit] 429 after ${i} attempts ✔`);
-      limitedAt = i;
-      break;
+test("login brute force is rate limited by the application", async ({ page }) => {
+  test.setTimeout(60_000);
+  assertSafeE2ETarget();
+  await cleanup();
+
+  try {
+    await page.goto("/login");
+    const error = page.locator("p[role='alert']");
+    for (let i = 1; i <= MAX_ATTEMPTS; i++) {
+      await page.getByLabel("Email").fill(testEmail("brute-force-test"));
+      await page.getByLabel("Password").fill(`wrong-password-${i}`);
+      const submission = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" && response.url().endsWith("/login"),
+      );
+      await page.getByRole("button", { name: "Log in" }).click();
+      await submission;
+      // A repeated invalid-credentials message does not change the DOM, so
+      // wait for the server-side counter instead of racing the next submit.
+      await expect
+        .poll(async () => (await rateLimitRows())[0]?.count ?? 0)
+        .toBe(i);
+      await expect(error).not.toHaveText(/Too many login attempts/);
     }
-    // 400 = credentials rejected but request allowed — keep hammering.
-    expect(res.status(), `attempt ${i}`).toBe(400);
-  }
 
-  expect(limitedAt, `no 429 within ${ATTEMPTS} attempts — check rate limits`).toBeGreaterThan(0);
+    // Change the form value so this is a distinct submission after the tenth
+    // failed attempt, even when React preserves the prior error state.
+    await page.getByLabel("Password").fill("wrong-password-blocked");
+    const submission = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" && response.url().endsWith("/login"),
+    );
+    await page.getByRole("button", { name: "Log in" }).click();
+    await submission;
+    await expect
+      .poll(async () => (await rateLimitRows())[0]?.count ?? 0)
+      .toBe(MAX_ATTEMPTS + 1);
+    await expect(error).toHaveText(/Too many login attempts/);
+  } finally {
+    await cleanup();
+  }
 });

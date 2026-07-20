@@ -1,22 +1,13 @@
-import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { openFirstProduct } from "./helpers";
+import { assertSafeE2ETarget, env, testEmail } from "./security";
 
 // Guest checkout rate limit, end to end: 10 orders go through (each redirects
 // to Stripe — we abort that navigation, i.e. "cancel back"), the 11th is
 // rejected by the server action. Test data is cleaned up via PostgREST.
 
-const EMAIL = "rate-limit-test@example.com";
+const EMAIL = testEmail("rate-limit-test");
 const MAX = 10;
-
-function env(name: string): string {
-  const fromFile = fs
-    .readFileSync(".env.local", "utf8")
-    .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1];
-  const value = process.env[name] ?? fromFile;
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
 
 /** Deletes test orders and all guest-checkout rate-limit rows. */
 async function cleanup() {
@@ -43,6 +34,7 @@ async function payAttempt(page: Page) {
 
 test("guest checkout blocks the 11th order per IP", async ({ page }) => {
   test.setTimeout(180_000); // 10 real Stripe sessions
+  assertSafeE2ETarget();
   await cleanup(); // reruns start with a fresh window
 
   // "Cancel back from the provider": abort the redirect to Stripe — the

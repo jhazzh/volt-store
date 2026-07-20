@@ -1,21 +1,12 @@
-import fs from "node:fs";
 import { expect, test } from "@playwright/test";
+import { assertSafeE2ETarget, env, runId, testEmail } from "./security";
 
 // Digital delivery access control for /api/download/:orderItemId.
 // A paid guest order's item is downloadable only with the exact order token;
 // no/empty/wrong token all 404. Mirrors order-token.spec.ts.
 
-const EMAIL = "download-token-test@example.com";
-const PRODUCT_SLUG = "getting-started-guide"; // seeded by `npm run seed:digital`
-
-function env(name: string): string {
-  const fromFile = fs
-    .readFileSync(".env.local", "utf8")
-    .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1];
-  const value = process.env[name] ?? fromFile;
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
+const EMAIL = testEmail("download-token-test");
+const PRODUCT_SLUG = `e2e-download-${runId}`;
 
 const API = () => env("NEXT_PUBLIC_SUPABASE_URL");
 function adminHeaders() {
@@ -38,9 +29,21 @@ async function rest(path: string, init: RequestInit = {}) {
 
 /** Paid guest order with one digital order_item. Returns ids + token. */
 async function createPaidDigitalOrder() {
-  const [product] = await rest(`products?slug=eq.${PRODUCT_SLUG}&select=id`);
-  if (!product?.id)
-    throw new Error(`Seed the digital product first: npm run seed:digital`);
+  // Use a URL delivery product so this test never depends on a seeded private
+  // storage object. The route's authorization happens before the redirect.
+  const [product] = await rest("products", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "E2E Download Product",
+      slug: PRODUCT_SLUG,
+      price: 12,
+      stock: null,
+      product_type: "digital",
+      delivery_type: "url",
+      delivery_value: "https://example.com/e2e-download.pdf",
+    }),
+  });
+  if (!product?.id) throw new Error("Could not create test digital product");
 
   const [order] = await rest("orders", {
     method: "POST",
@@ -71,22 +74,27 @@ async function cleanup() {
     method: "DELETE",
     headers: adminHeaders(),
   });
+  await fetch(`${API()}/rest/v1/products?slug=eq.${PRODUCT_SLUG}`, {
+    method: "DELETE",
+    headers: adminHeaders(),
+  });
 }
 
 test("digital download opens only with the exact order token", async ({
   request,
   baseURL,
 }) => {
+  assertSafeE2ETarget();
   await cleanup();
-  const { itemId, token } = await createPaidDigitalOrder();
-  const url = (t?: string) =>
-    `${baseURL}/api/download/${itemId}${t === undefined ? "" : `?token=${t}`}`;
-
-  // Don't follow redirects: a valid delivery 302s to an off-origin signed URL.
-  const hit = (t?: string) =>
-    request.get(url(t), { maxRedirects: 0 });
 
   try {
+    const { itemId, token } = await createPaidDigitalOrder();
+    const url = (t?: string) =>
+      `${baseURL}/api/download/${itemId}${t === undefined ? "" : `?token=${t}`}`;
+
+    // Don't follow redirects: a valid delivery 302s to an off-origin URL.
+    const hit = (t?: string) => request.get(url(t), { maxRedirects: 0 });
+
     expect((await hit()).status(), "no token").toBe(404);
     expect((await hit("")).status(), "empty token").toBe(404);
     expect(
