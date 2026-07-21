@@ -23,6 +23,12 @@ const products = [
   ["Atlas Backpack", "atlas-backpack", "Water-resistant 20L tech backpack.", 99, 22, "atlas", "accessories"],
 ];
 
+// Per-slug real photos; anything not listed falls back to a picsum placeholder.
+const imageOverrides = {
+  "orbit-watch-s":
+    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&h=800&fit=crop",
+};
+
 const { data: cats, error: catErr } = await supabase
   .from("categories")
   .upsert(categories, { onConflict: "slug" })
@@ -37,7 +43,9 @@ const rows = products.map(([name, slug, description, price, stock, seed, cat]) =
   description,
   price,
   stock,
-  image_url: `https://picsum.photos/seed/${seed}/800/800`,
+  // Real product photo where we have one; picsum placeholder otherwise.
+  image_url:
+    imageOverrides[slug] ?? `https://picsum.photos/seed/${seed}/800/800`,
   category_id: catId[cat],
 }));
 
