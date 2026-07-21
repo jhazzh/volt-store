@@ -24,10 +24,16 @@ export default async function ProductsPage({ searchParams }: Props) {
   const params = await searchParams;
   const asStr = (v: string | string[] | undefined) =>
     Array.isArray(v) ? v[0] : v;
+  const num = (v: string | string[] | undefined) => {
+    const n = Number(asStr(v));
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
+  };
   const filters: ProductFilters = {
     category: asStr(params.category),
     sort: asStr(params.sort) as ProductFilters["sort"],
     q: asStr(params.q),
+    minPrice: num(params.minPrice),
+    maxPrice: num(params.maxPrice),
     specs: parseSpecParams(params),
   };
 
@@ -46,11 +52,10 @@ export default async function ProductsPage({ searchParams }: Props) {
 
       <FilterPendingProvider>
         <div className="flex flex-col gap-8 md:flex-row">
-          {facets.length > 0 && (
-            <div className="md:w-48 md:shrink-0">
-              <SpecFacets facets={facets} />
-            </div>
-          )}
+          {/* Always rendered: holds the price filter even with no spec facets. */}
+          <div className="md:w-48 md:shrink-0">
+            <SpecFacets facets={facets} />
+          </div>
 
           <div className="flex-1">
             {products.length === 0 ? (

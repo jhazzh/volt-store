@@ -1,0 +1,116 @@
+import "server-only";
+
+import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
+
+export type ParsedQuery = {
+  // What to embed for semantic search — the descriptive part, prices stripped.
+  q: string;
+  minPrice?: number;
+  maxPrice?: number;
+  category?: string;
+  sort?: "price-asc" | "price-desc";
+};
+
+const SYSTEM_PROMPT =
+  "You turn a shopper's search sentence into JSON filters for an online store. " +
+  'Reply with ONLY a JSON object: {"q": string, "minPrice"?: number, ' +
+  '"maxPrice"?: number, "category"?: string, "sort"?: "price-asc"|"price-desc"}. ' +
+  '"q" is the descriptive part with all price/category words removed (e.g. ' +
+  '"a quiet gift under $50" -> q:"quiet gift"). Set category ONLY to one from ' +
+  "the provided list, matched loosely. Use sort only when the shopper asks for " +
+  'cheapest/most expensive. Omit any field you are unsure about. No prose.';
+
+// Cheap pre-check: only worth an LLM call when the text hints at a price,
+// number, or sort — plain keyword searches skip it and save the rate limit.
+const FILTER_HINT =
+  /\d|\bunder\b|\bover\b|\bbelow\b|\babove\b|\bless\b|\bmore\b|\bcheap|\bexpensive|\bbudget\b|\baffordable\b|\$|£|€|\bprice\b/i;
+
+/**
+ * Whether the text looks like it carries a price/number/sort filter.
+ * @param {string} text the shopper's search sentence
+ * @return {boolean} true if an LLM parse is worthwhile
+ */
+export function hasFilterHint(text: string): boolean {
+  return FILTER_HINT.test(text);
+}
+
+/**
+ * Parse a natural-language query into structured filters via the LLM.
+ * Falls back to the raw text as `q` (no filters) when the key is unset or the
+ * call fails, so search never breaks because parsing is down.
+ * @param {string} text the shopper's search sentence
+ * @param {string[]} categories valid category slugs to constrain `category`
+ * @return {Promise<ParsedQuery>} filters, always with at least `q`
+ */
+export async function parseQuery(
+  text: string,
+  categories: string[]
+): Promise<ParsedQuery> {
+  const raw = text.trim();
+  const key = process.env.GROQ_API_KEY;
+  if (!key || !raw) return { q: raw };
+
+  try {
+    const res = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        max_tokens: 200,
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: `Categories: ${categories.join(", ")}\n\nSearch: ${raw}`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return { q: raw };
+
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
+    return normalize(content, raw, categories);
+  } catch {
+    return { q: raw };
+  }
+}
+
+/**
+ * Validate the model's JSON, dropping anything malformed or out of range.
+ * @param {unknown} content raw JSON string from the model
+ * @param {string} raw original query, used as the `q` fallback
+ * @param {string[]} categories allowed category slugs
+ * @return {ParsedQuery} clean filters
+ */
+export function normalize(
+  content: unknown,
+  raw: string,
+  categories: string[]
+): ParsedQuery {
+  let obj: Record<string, unknown> = {};
+  try {
+    if (typeof content === "string") obj = JSON.parse(content);
+  } catch {
+    return { q: raw };
+  }
+
+  const num = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : undefined;
+
+  const q = typeof obj.q === "string" && obj.q.trim() ? obj.q.trim() : raw;
+  const category =
+    typeof obj.category === "string" && categories.includes(obj.category)
+      ? obj.category
+      : undefined;
+  const sort =
+    obj.sort === "price-asc" || obj.sort === "price-desc" ? obj.sort : undefined;
+
+  return { q, minPrice: num(obj.minPrice), maxPrice: num(obj.maxPrice), category, sort };
+}

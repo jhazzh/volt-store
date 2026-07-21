@@ -27,6 +27,8 @@ export type ProductFilters = {
   category?: string;
   sort?: "newest" | "price-asc" | "price-desc";
   q?: string;
+  minPrice?: number;
+  maxPrice?: number;
   // Selected spec facets: key → chosen values. Same key = OR, across keys = AND.
   specs?: Record<string, string[]>;
 };
@@ -78,6 +80,8 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   if (specIds !== null) query = query.in("id", specIds);
 
   if (filters.category) query = query.eq("categories.slug", filters.category);
+  if (filters.minPrice != null) query = query.gte("price", filters.minPrice);
+  if (filters.maxPrice != null) query = query.lte("price", filters.maxPrice);
   if (filters.q) {
     // Strip PostgREST or-syntax chars so user input can't break the filter.
     const q = filters.q.replace(/[,()]/g, " ").trim();
@@ -137,23 +141,49 @@ export async function searchProducts(
   const q = filters.q?.trim();
   if (!q) return getProducts(filters);
 
+  // Let the LLM pull price/category/sort out of the sentence, leaving a clean
+  // descriptive `q` to embed. Explicit UI filters win over anything it infers.
+  // Skip the call for plain keyword searches with no price/number hint.
+  const { parseQuery, hasFilterHint } = await import("@/lib/parse-query");
+  const parsed: import("@/lib/parse-query").ParsedQuery = hasFilterHint(q)
+    ? await parseQuery(q, (await getCategories()).map((c) => c.slug))
+    : { q };
+
+  const merged: ProductFilters = {
+    ...filters,
+    q: parsed.q,
+    category: filters.category ?? parsed.category,
+    minPrice: filters.minPrice ?? parsed.minPrice,
+    maxPrice: filters.maxPrice ?? parsed.maxPrice,
+    sort: filters.sort ?? parsed.sort,
+  };
+
   const [keyword, semantic] = await Promise.all([
-    getProducts(filters),
-    searchProductsSemantic(q, 24),
+    getProducts(merged),
+    searchProductsSemantic(parsed.q, 24),
   ]);
 
-  // Semantic ignores category/spec filters, so re-apply them here to keep the
-  // filter honest.
-  const hasFacets = filters.category || Object.keys(filters.specs ?? {}).length > 0;
+  // Semantic ignores structured filters, so re-apply category/specs/price here
+  // to keep the filter honest.
+  const hasFacets =
+    merged.category ||
+    merged.minPrice != null ||
+    merged.maxPrice != null ||
+    Object.keys(merged.specs ?? {}).length > 0;
   const allowedIds = hasFacets
     ? new Set(
         (
-          await getProducts({ category: filters.category, specs: filters.specs })
+          await getProducts({
+            category: merged.category,
+            specs: merged.specs,
+            minPrice: merged.minPrice,
+            maxPrice: merged.maxPrice,
+          })
         ).map((p) => p.id)
       )
     : null;
 
-  return mergeSearchResults(keyword, semantic, allowedIds, filters.sort);
+  return mergeSearchResults(keyword, semantic, allowedIds, merged.sort);
 }
 
 /**

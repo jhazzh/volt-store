@@ -39,9 +39,11 @@ export function Filters({ categories }: { categories: Category[] }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    // Mobile: one no-wrap row that scrolls sideways. sm+: wraps normally.
+    // -mx-4 px-4 lets the row scroll edge-to-edge without clipping the page.
+    <div className="-mx-4 flex items-center gap-3 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
       {/* Each label+select stays together; the two groups wrap as units. */}
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
         <label className="text-sm text-muted" htmlFor="category">
           Category
         </label>
@@ -60,7 +62,7 @@ export function Filters({ categories }: { categories: Category[] }) {
         </select>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
         <label className="text-sm text-muted" htmlFor="sort">
           Sort
         </label>

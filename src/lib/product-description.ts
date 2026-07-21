@@ -1,8 +1,5 @@
 import "server-only";
-
-// Groq's OpenAI-compatible endpoint. Free tier, doesn't train on inputs.
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
 
 const SYSTEM_PROMPT =
   "You write product descriptions for an online store. Given a product's " +

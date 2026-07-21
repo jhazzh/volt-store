@@ -1,4 +1,5 @@
 import "server-only";
+import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
 import type { Review } from "@/lib/types";
 
 // Regenerate the cached summary only after this many new reviews accumulate,
@@ -6,10 +7,6 @@ import type { Review } from "@/lib/types";
 export const SUMMARY_REFRESH_EVERY = 5;
 // Below this, a summary adds nothing over just showing the reviews.
 export const SUMMARY_MIN_REVIEWS = 3;
-
-// Groq's OpenAI-compatible endpoint. Free tier, doesn't train on inputs.
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 const SYSTEM_PROMPT =
   "You summarize customer reviews for an online store. Write 2-3 plain " +

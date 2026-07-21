@@ -26,6 +26,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true, // card → detail image morph
+    // Firefox reports transferSize:0 for the dev document, so Next's debug
+    // channel thinks it was served from cache and hard-reloads in a loop.
+    // Off until the upstream Firefox bug is fixed. (Default is true in 16.2.)
+    reactDebugChannel: false,
   },
   images: {
     remotePatterns: [

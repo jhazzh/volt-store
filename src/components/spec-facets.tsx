@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useOptimistic, useState, useTransition } from "react";
 import { useFilterPending } from "@/components/filter-pending";
+import { PriceRange } from "@/components/price-range";
 import { specParamName } from "@/lib/spec-params";
 import type { SpecFacet } from "@/lib/types";
 
@@ -39,8 +40,6 @@ export function SpecFacets({ facets }: { facets: SpecFacet[] }) {
     }
   );
 
-  if (facets.length === 0) return null;
-
   // Group facets by key, preserving the query's alphabetical order.
   const groups = new Map<string, SpecFacet[]>();
   for (const f of facets) {
@@ -69,18 +68,45 @@ export function SpecFacets({ facets }: { facets: SpecFacet[] }) {
     });
   };
 
-  // Total active filters, shown in the mobile summary.
-  const activeCount = [...groups.keys()].reduce((n, key) => n + selected(key).length, 0);
+  // Total active filters, shown in the mobile summary. Price (min and/or max)
+  // counts as one.
+  const p = new URLSearchParams(optimisticParams);
+  const priceActive = p.get("minPrice") || p.get("maxPrice") ? 1 : 0;
+  const sortActive = p.get("sort") && p.get("sort") !== "newest" ? 1 : 0;
+  const activeCount =
+    [...groups.keys()].reduce((n, key) => n + selected(key).length, 0) +
+    priceActive +
+    sortActive;
+
+  // Clear all filters and sort, but keep the search query `q` so a reset
+  // narrows back to "all results for this search", not the whole catalog.
+  const reset = () => {
+    const next = new URLSearchParams();
+    const q = params.get("q");
+    if (q) next.set("q", q);
+    startTransition(() => router.push(`${pathname}?${next.toString()}`));
+  };
 
   return (
     // Collapsible on mobile (saves vertical space); always open on desktop via
     // [&]:open — the `open` attribute is toggled by the user on small screens.
     <div className="text-sm">
+      {/* Reset stays outside the collapsible so it's reachable while the mobile
+          panel is closed; visible on desktop too. */}
+      {activeCount > 0 && (
+        <button
+          type="button"
+          onClick={reset}
+          className="mb-2 cursor-pointer text-sm text-muted underline underline-offset-2 hover:text-foreground"
+        >
+          Reset filters
+        </button>
+      )}
       <button
         type="button"
         onClick={() => setMobileOpen((v) => !v)}
         aria-expanded={mobileOpen}
-        className="mb-2 flex w-full cursor-pointer items-center justify-between rounded-md border border-border px-3 py-2 font-semibold sm:hidden"
+        className="mb-2 flex w-full cursor-pointer items-center justify-between rounded-md border border-border px-3 py-2 font-semibold md:hidden"
       >
         <span>Filters{activeCount > 0 ? ` (${activeCount})` : ""}</span>
         <svg
@@ -91,7 +117,8 @@ export function SpecFacets({ facets }: { facets: SpecFacet[] }) {
         </svg>
       </button>
       {/* Collapsed on mobile unless toggled open; always shown from sm up. */}
-      <div className={`${mobileOpen ? "block" : "hidden"} space-y-6 sm:!block`}>
+      <div className={`${mobileOpen ? "block" : "hidden"} space-y-6 md:!block`}>
+      <PriceRange />
       {[...groups.entries()].map(([key, options]) => (
         <div key={key}>
           <h3 className="mb-2 font-semibold">{key}</h3>
