@@ -18,12 +18,16 @@ export default async function EditProductPage({
   const { id } = await params;
 
   const supabase = await createClient();
-  const { data: product } = await supabase
+  const { data: row } = await supabase
     .from("products")
-    .select("*")
+    .select("*, product_specs(key, value)")
     .eq("id", id)
-    .maybeSingle<Product>();
-  if (!product) notFound();
+    .order("position", { referencedTable: "product_specs" })
+    .maybeSingle();
+  if (!row) notFound();
+
+  const { product_specs, ...rest } = row;
+  const product = { ...rest, specs: product_specs ?? [] } as Product;
 
   const categories = await getCategories();
   const action = updateProduct.bind(null, id); // (prev, formData) => …

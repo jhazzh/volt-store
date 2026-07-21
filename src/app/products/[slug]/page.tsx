@@ -94,6 +94,16 @@ export default async function ProductPage({ params }: Props) {
                 ? `${product.stock} in stock`
                 : "Currently unavailable"}
           </p>
+          {product.specs && product.specs.length > 0 && (
+            <dl className="mt-6 divide-y divide-border border-t border-border text-sm">
+              {product.specs.map((spec, i) => (
+                <div key={i} className="flex justify-between gap-4 py-2">
+                  <dt className="text-muted">{spec.key}</dt>
+                  <dd className="text-right font-medium">{spec.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
           <div className="mt-8 max-w-sm">
             <AddToCart product={product} />
           </div>

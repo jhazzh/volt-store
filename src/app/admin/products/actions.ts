@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { embedProduct } from "@/lib/embed";
+import { generateDescription } from "@/lib/product-description";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productSchema } from "@/lib/validation";
@@ -77,6 +78,42 @@ async function toRow(
   return { row };
 }
 
+/** Read parallel spec_key[]/spec_value[] fields into ordered spec rows. */
+function parseSpecs(
+  productId: string,
+  formData: FormData
+): { product_id: string; key: string; value: string; position: number }[] {
+  const keys = formData.getAll("spec_key") as string[];
+  const values = formData.getAll("spec_value") as string[];
+  const rows: { product_id: string; key: string; value: string; position: number }[] = [];
+  keys.forEach((k, i) => {
+    const key = k.trim();
+    const value = (values[i] ?? "").trim();
+    if (key && value) {
+      rows.push({ product_id: productId, key, value, position: rows.length });
+    }
+  });
+  return rows;
+}
+
+/** Replace a product's specs with the submitted set (delete-all + reinsert). */
+async function saveSpecs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  productId: string,
+  formData: FormData
+): Promise<string | undefined> {
+  const { error: delError } = await supabase
+    .from("product_specs")
+    .delete()
+    .eq("product_id", productId);
+  if (delError) return delError.message;
+
+  const rows = parseSpecs(productId, formData);
+  if (rows.length === 0) return undefined;
+  const { error } = await supabase.from("product_specs").insert(rows);
+  return error?.message;
+}
+
 export async function createProduct(_prev: State, formData: FormData): Promise<State> {
   await requireAdmin();
   const built = await toRow(parseForm(formData), formData);
@@ -90,6 +127,9 @@ export async function createProduct(_prev: State, formData: FormData): Promise<S
     .select("id")
     .single();
   if (error) return { error: error.message };
+
+  const specError = await saveSpecs(supabase, data.id, formData);
+  if (specError) return { error: specError };
 
   // Off the response path — the admin shouldn't wait on the search index.
   after(() => embedProduct(data.id, row.name as string, row.description as string));
@@ -120,6 +160,9 @@ export async function updateProduct(
   const { error } = await supabase.from("products").update(row).eq("id", id);
   if (error) return { error: error.message };
 
+  const specError = await saveSpecs(supabase, id, formData);
+  if (specError) return { error: specError };
+
   const name = row.name as string;
   const description = row.description as string;
   if (!before || before.name !== name || before.description !== description) {
@@ -129,6 +172,43 @@ export async function updateProduct(
   revalidatePath("/admin/products");
   revalidatePath("/products");
   redirect("/admin/products");
+}
+
+type DraftState = { description?: string; error?: string };
+
+/** Draft a product description from the form's current name/category/price. */
+export async function draftDescription(
+  _prev: DraftState,
+  formData: FormData
+): Promise<DraftState> {
+  await requireAdmin();
+  const name = (formData.get("name") as string)?.trim();
+  if (!name) return { error: "Enter a name first" };
+
+  const categoryId = (formData.get("category_id") as string) || null;
+  let category: string | null = null;
+  if (categoryId) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("categories")
+      .select("name")
+      .eq("id", categoryId)
+      .maybeSingle();
+    category = data?.name ?? null;
+  }
+
+  const priceRaw = formData.get("price") as string;
+  const price = priceRaw ? Number(priceRaw) : null;
+
+  const description = await generateDescription({
+    name,
+    category,
+    price: Number.isFinite(price) ? price : null,
+    productType: (formData.get("product_type") as string) || null,
+  });
+
+  if (!description) return { error: "Couldn't generate — try again" };
+  return { description };
 }
 
 export async function deleteProduct(id: string): Promise<void> {

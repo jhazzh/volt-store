@@ -112,11 +112,15 @@ export async function getProduct(slug: string): Promise<Product | null> {
   const supabase = createStaticClient();
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select("*, product_specs(key, value)")
     .eq("slug", slug)
+    .order("position", { referencedTable: "product_specs" })
     .maybeSingle();
   if (error) throw new Error(`getProduct: ${error.message}`);
-  return data;
+  if (!data) return null;
+  // Flatten the joined rows onto product.specs to match the Product type.
+  const { product_specs, ...product } = data;
+  return { ...product, specs: product_specs ?? [] } as Product;
 }
 
 /**

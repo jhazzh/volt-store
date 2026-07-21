@@ -18,7 +18,13 @@ export type Product = {
   category_id: string | null;
   review_summary: string | null;
   review_summary_count: number;
+  specs?: ProductSpec[];
   created_at: string;
+};
+
+export type ProductSpec = {
+  key: string;
+  value: string;
 };
 
 export type Review = {

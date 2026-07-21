@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import type { Category, Product } from "@/lib/types";
+import { draftDescription } from "@/app/admin/products/actions";
+import type { Category, Product, ProductSpec } from "@/lib/types";
 
 type Action = (prev: { error?: string }, formData: FormData) => Promise<{ error?: string }>;
 
@@ -25,6 +26,26 @@ export function ProductForm({
   );
   const [delivery, setDelivery] = useState(product?.delivery_type ?? "file");
 
+  // AI description drafting shares the same form's fields (name, category, …).
+  const [description, setDescription] = useState(product?.description ?? "");
+  const [draft, draftAction, drafting] = useActionState(draftDescription, {});
+  // Adopt a freshly generated draft without an effect: React allows setState
+  // during render when guarded by a state comparison. Tracking the last applied
+  // draft keeps re-renders from clobbering the admin's manual edits.
+  const [applied, setApplied] = useState<string | undefined>(undefined);
+  if (draft.description && draft.description !== applied) {
+    setApplied(draft.description);
+    setDescription(draft.description);
+  }
+
+  // Dynamic spec rows (key/value). Submitted as parallel spec_key[]/spec_value[].
+  const [specs, setSpecs] = useState<ProductSpec[]>(product?.specs ?? []);
+  const setSpec = (i: number, patch: Partial<ProductSpec>) =>
+    setSpecs((s) => s.map((row, j) => (j === i ? { ...row, ...patch } : row)));
+  const addSpec = () => setSpecs((s) => [...s, { key: "", value: "" }]);
+  const removeSpec = (i: number) =>
+    setSpecs((s) => s.filter((_, j) => j !== i));
+
   const field = "mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm";
   const label = "block text-sm font-medium";
 
@@ -45,13 +66,26 @@ export function ProductForm({
         />
       </div>
       <div>
-        <label className={label}>Description</label>
+        <div className="flex items-center justify-between">
+          <label className={label}>Description</label>
+          <button
+            type="submit"
+            formAction={draftAction}
+            formNoValidate
+            disabled={drafting}
+            className="text-xs font-medium text-accent hover:underline disabled:opacity-50"
+          >
+            {drafting ? "Generating…" : "✨ Generate with AI"}
+          </button>
+        </div>
         <textarea
           name="description"
-          defaultValue={product?.description}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           rows={3}
           className={field}
         />
+        {draft.error && <p className="mt-1 text-xs text-red-500">{draft.error}</p>}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -91,6 +125,48 @@ export function ProductForm({
           placeholder="https://…"
           className={field}
         />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className={label}>Specs</label>
+          <button
+            type="button"
+            onClick={addSpec}
+            className="text-xs font-medium text-accent hover:underline"
+          >
+            + Add spec
+          </button>
+        </div>
+        {specs.length === 0 && (
+          <p className="text-xs text-muted">No specs. Add rows like Material → Aluminum.</p>
+        )}
+        {specs.map((spec, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              name="spec_key"
+              value={spec.key}
+              onChange={(e) => setSpec(i, { key: e.target.value })}
+              placeholder="Key (e.g. Material)"
+              className={`${field} mt-0 flex-1`}
+            />
+            <input
+              name="spec_value"
+              value={spec.value}
+              onChange={(e) => setSpec(i, { value: e.target.value })}
+              placeholder="Value (e.g. Aluminum)"
+              className={`${field} mt-0 flex-1`}
+            />
+            <button
+              type="button"
+              onClick={() => removeSpec(i)}
+              aria-label="Remove spec"
+              className="shrink-0 rounded-md border border-border px-3 text-sm text-muted hover:text-red-500"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
       </div>
 
       <div>
