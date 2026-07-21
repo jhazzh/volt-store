@@ -52,17 +52,19 @@ export function SpecFacets({ facets }: { facets: SpecFacet[] }) {
       .split(",").map((v) => v.trim()).filter(Boolean);
 
   const toggle = (key: string, value: string) => {
+    // Build the next URL from the optimistic params, not the last-committed
+    // `params` — so rapid clicks before a commit stack instead of clobbering.
+    const search = new URLSearchParams(optimisticParams);
+    const name = specParamName(key);
+    const current = (search.get(name) ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+    const next = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
+    if (next.length > 0) search.set(name, next.join(","));
+    else search.delete(name);
+
     startTransition(() => {
       applyToggle({ key, value });
-
-      const search = new URLSearchParams(params);
-      const name = specParamName(key);
-      const current = (search.get(name) ?? "").split(",").map((v) => v.trim()).filter(Boolean);
-      const next = current.includes(value)
-        ? current.filter((v) => v !== value)
-        : [...current, value];
-      if (next.length > 0) search.set(name, next.join(","));
-      else search.delete(name);
       router.push(`${pathname}?${search.toString()}`);
     });
   };

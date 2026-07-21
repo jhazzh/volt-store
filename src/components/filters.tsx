@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useOptimistic, useTransition } from "react";
 import type { Category } from "@/lib/types";
 
 /**
@@ -11,12 +12,30 @@ export function Filters({ categories }: { categories: Category[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const [, startTransition] = useTransition();
+
+  // Optimistic view of the query so rapid changes stack instead of reading
+  // stale (last-committed) params and clobbering each other.
+  const [optimistic, applyChange] = useOptimistic(
+    params.toString(),
+    (prev, { key, value }: { key: string; value: string }) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set(key, value);
+      else next.delete(key);
+      return next.toString();
+    }
+  );
+
+  const current = new URLSearchParams(optimistic);
 
   const update = (key: string, value: string) => {
-    const next = new URLSearchParams(params);
+    const next = new URLSearchParams(optimistic);
     if (value) next.set(key, value);
     else next.delete(key);
-    router.push(`${pathname}?${next.toString()}`);
+    startTransition(() => {
+      applyChange({ key, value });
+      router.push(`${pathname}?${next.toString()}`);
+    });
   };
 
   return (
@@ -28,7 +47,7 @@ export function Filters({ categories }: { categories: Category[] }) {
         </label>
         <select
           id="category"
-          value={params.get("category") ?? ""}
+          value={current.get("category") ?? ""}
           onChange={(e) => update("category", e.target.value)}
           className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
         >
@@ -47,7 +66,7 @@ export function Filters({ categories }: { categories: Category[] }) {
         </label>
         <select
           id="sort"
-          value={params.get("sort") ?? "newest"}
+          value={current.get("sort") ?? "newest"}
           onChange={(e) => update("sort", e.target.value)}
           className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
         >
