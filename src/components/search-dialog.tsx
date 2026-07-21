@@ -11,6 +11,13 @@ import { formatPrice } from "@/lib/format";
 
 const emptySubscribe = () => () => {};
 
+// Natural-language examples that hint the AI search (sentences + price filters).
+const PLACEHOLDERS = [
+  "a loud speaker under $50",
+  "something for storing a laptop under $150",
+  "a controller"
+];
+
 /**
  * @return {JSX.Element} navbar search trigger + pop-up (Ctrl/⌘+K)
  */
@@ -75,6 +82,15 @@ function SearchPanel({ close }: { close: () => void }) {
   const query = q.trim();
   const loading = query.length >= 2 && done.q !== query;
   const results = done.q === query ? done.results : [];
+
+  // Rotate the placeholder every 3s while the box is empty, so the AI examples
+  // cycle without distracting once the shopper starts typing.
+  const [phIndex, setPhIndex] = useState(0);
+  useEffect(() => {
+    if (q) return;
+    const id = setInterval(() => setPhIndex((i) => (i + 1) % PLACEHOLDERS.length), 3000);
+    return () => clearInterval(id);
+  }, [q]);
 
   useEffect(() => {
     restoreRef.current = document.activeElement as HTMLElement | null;
@@ -141,7 +157,7 @@ function SearchPanel({ close }: { close: () => void }) {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search products…"
+            placeholder={`Try “${PLACEHOLDERS[phIndex]}”`}
             aria-label="Search products"
             className="w-full rounded-t-xl border-b border-border bg-transparent px-4 py-3 text-sm outline-none"
           />

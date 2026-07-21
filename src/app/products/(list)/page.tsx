@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Filters } from "@/components/filters";
+import { SyncParsedFilters } from "@/components/sync-parsed-filters";
 import { ProductCard } from "@/components/product-card";
 import { SpecFacets } from "@/components/spec-facets";
 import { FilterPendingProvider, GridDim } from "@/components/filter-pending";
 import {
   getCategories,
   getSpecFacets,
-  searchProducts,
+  searchProductsResolved,
   type ProductFilters,
 } from "@/lib/data";
 import { parseSpecParams } from "@/lib/spec-params";
@@ -37,14 +38,29 @@ export default async function ProductsPage({ searchParams }: Props) {
     specs: parseSpecParams(params),
   };
 
-  const [products, categories, facets] = await Promise.all([
-    searchProducts(filters),
+  const [{ products, filters: applied }, categories, facets] = await Promise.all([
+    searchProductsResolved(filters),
     getCategories(),
     getSpecFacets(),
   ]);
 
+  // Anything the LLM parsed out of a free-text query that isn't yet in the URL.
+  // A client effect writes these in via replaceState (no redirect/refetch) so
+  // the filter UI reflects them and the link stays shareable.
+  const parsedExtras: Record<string, string> = {};
+  const add = (k: string, v: number | string | undefined) => {
+    if (v != null && v !== "" && !params[k]) parsedExtras[k] = String(v);
+  };
+  add("category", applied.category);
+  add("sort", applied.sort);
+  add("minPrice", applied.minPrice);
+  add("maxPrice", applied.maxPrice);
+  // The cleaned query (price/category words stripped), only if it changed.
+  if (applied.q && applied.q !== asStr(params.q)) parsedExtras.q = applied.q;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      <SyncParsedFilters extras={parsedExtras} />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Products</h1>
         <Filters categories={categories} />

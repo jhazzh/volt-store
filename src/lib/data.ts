@@ -129,6 +129,13 @@ export async function searchProductsSemantic(
   return data ?? [];
 }
 
+export type SearchResolved = {
+  products: Product[];
+  // Filters actually applied, incl. anything the LLM parsed from the query.
+  // The page mirrors these into the URL so the filter UI reflects them.
+  filters: ProductFilters;
+};
+
 /**
  * Catalog search: keyword matches first, then semantic ones the ilike missed.
  * Without `q` this is plain getProducts, so category/sort browsing is unchanged.
@@ -138,8 +145,20 @@ export async function searchProductsSemantic(
 export async function searchProducts(
   filters: ProductFilters = {}
 ): Promise<Product[]> {
+  return (await searchProductsResolved(filters)).products;
+}
+
+/**
+ * Like searchProducts, but also returns the effective filters (with LLM-parsed
+ * price/category/sort merged in) so callers can surface them in the UI/URL.
+ * @param {ProductFilters} filters PLP filters
+ * @return {Promise<SearchResolved>} products + resolved filters
+ */
+export async function searchProductsResolved(
+  filters: ProductFilters = {}
+): Promise<SearchResolved> {
   const q = filters.q?.trim();
-  if (!q) return getProducts(filters);
+  if (!q) return { products: await getProducts(filters), filters };
 
   // Let the LLM pull price/category/sort out of the sentence, leaving a clean
   // descriptive `q` to embed. Explicit UI filters win over anything it infers.
@@ -183,7 +202,8 @@ export async function searchProducts(
       )
     : null;
 
-  return mergeSearchResults(keyword, semantic, allowedIds, merged.sort);
+  const products = mergeSearchResults(keyword, semantic, allowedIds, merged.sort);
+  return { products, filters: merged };
 }
 
 /**
