@@ -18,12 +18,12 @@ const supabase = createClient(
 // Reviewer identities + their reviews. One review per user per product (the
 // unique constraint), so keep emails distinct.
 const sampleReviews = [
-  { email: "review-maya@example.com", rating: 5, body: "Way louder than its size suggests — the bass genuinely surprised me. Fits in a jacket pocket." },
-  { email: "review-devin@example.com", rating: 4, body: "Great sound and battery. Docked a star because pairing to two devices is fiddly." },
-  { email: "review-priya@example.com", rating: 5, body: "Perfect for the kitchen. Survived a splash near the sink without issue." },
-  { email: "review-tom@example.com", rating: 3, body: "Sound is good but the volume buttons feel mushy and it took a few tries to register presses." },
-  { email: "review-lena@example.com", rating: 4, body: "Punchy for the price. Wish it got a touch louder for outdoor use, but indoors it's plenty." },
-  { email: "review-omar@example.com", rating: 5, body: "Bought two as gifts. Both recipients loved the bass and the tiny footprint." },
+  { email: "review-1@example.com", rating: 5, body: "Way louder than its size suggests — the bass genuinely surprised me. Fits in a jacket pocket." },
+  { email: "review-2@example.com", rating: 4, body: "Great sound and battery. Docked a star because pairing to two devices is fiddly." },
+  { email: "review-3@example.com", rating: 5, body: "Perfect for the kitchen. Survived a splash near the sink without issue." },
+  { email: "review-4@example.com", rating: 3, body: "Sound is good but the volume buttons feel mushy and it took a few tries to register presses." },
+  { email: "review-5@example.com", rating: 4, body: "Punchy for the price. Wish it got a touch louder for outdoor use, but indoors it's plenty." },
+  { email: "review-6@example.com", rating: 5, body: "Bought two as gifts. Both recipients loved the bass and the tiny footprint." },
 ];
 
 // Look up the product.
