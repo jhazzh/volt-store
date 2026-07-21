@@ -17,6 +17,14 @@ export function SpecKeyForm({
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const [type, setType] = useState<SpecKeyType>(specKey?.type ?? "text");
+  // Re-sync when the saved key's type changes underneath us (revalidation
+  // streams fresh props without remounting the form), so the select doesn't
+  // snap back to its first option after saving.
+  const [lastProp, setLastProp] = useState(specKey?.type);
+  if (specKey?.type !== lastProp) {
+    setLastProp(specKey?.type);
+    setType(specKey?.type ?? "text");
+  }
   const field = "rounded-md border border-border bg-card px-3 py-2 text-sm";
 
   return (
@@ -37,9 +45,10 @@ export function SpecKeyForm({
         <option value="text">Text</option>
         <option value="number">Number</option>
         <option value="boolean">Yes / No</option>
-        <option value="enum">Options (enum)</option>
+        <option value="enum">Options — pick one</option>
+        <option value="multiselect">Options — pick many</option>
       </select>
-      {type === "enum" && (
+      {(type === "enum" || type === "multiselect") && (
         <textarea
           name="allowed_values"
           defaultValue={specKey?.allowed_values.join("\n")}

@@ -1,13 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { SpecKeyType } from "@/lib/types";
 
 type State = { error?: string };
 
-const TYPES: SpecKeyType[] = ["text", "number", "boolean", "enum"];
+const TYPES: SpecKeyType[] = ["text", "number", "boolean", "enum", "multiselect"];
+const HAS_OPTIONS = (t: SpecKeyType) => t === "enum" || t === "multiselect";
 
 /** Parse name, type, and (for enum) newline-separated allowed values. */
 function parse(formData: FormData) {
@@ -20,8 +22,8 @@ function parse(formData: FormData) {
 
   if (!name) return { error: "Name is required" as const };
   if (!TYPES.includes(type)) return { error: "Invalid type" as const };
-  if (type === "enum" && allowed.length === 0) {
-    return { error: "Enum keys need at least one value" as const };
+  if (HAS_OPTIONS(type) && allowed.length === 0) {
+    return { error: "Options keys need at least one value" as const };
   }
   return { name, type, allowed };
 }
@@ -39,7 +41,7 @@ async function saveValues(
   allowed: string[]
 ): Promise<string | undefined> {
   await supabase.from("spec_key_values").delete().eq("key", key);
-  if (type !== "enum" || allowed.length === 0) return undefined;
+  if (!HAS_OPTIONS(type) || allowed.length === 0) return undefined;
   const rows = allowed.map((value, position) => ({ key, value, position }));
   const { error } = await supabase.from("spec_key_values").insert(rows);
   return error?.message;
@@ -84,7 +86,7 @@ export async function updateSpecKey(
   if (valError) return { error: valError };
 
   revalidate();
-  return {};
+  redirect("/admin/spec-keys"); // back to the list; avoids a stale edit page
 }
 
 // FK from product_specs is ON DELETE RESTRICT, so a key in use can't be deleted.

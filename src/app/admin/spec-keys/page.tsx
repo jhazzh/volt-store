@@ -38,7 +38,7 @@ export default async function AdminSpecKeysPage() {
               <td className="py-2">{k.name}</td>
               <td className="text-muted">{k.type}</td>
               <td className="text-muted">
-                {k.type === "enum" ? k.allowed_values.join(", ") : "—"}
+                {k.allowed_values.length > 0 ? k.allowed_values.join(", ") : "—"}
               </td>
               <td className="flex justify-end gap-3 py-2">
                 <Link

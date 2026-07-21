@@ -165,7 +165,9 @@ export function ProductForm({
               />
             ) : (
               <select
-                name="spec_key"
+                // Multiselect emits its own spec_key per checked value, so the
+                // dropdown itself must not also submit a bare spec_key.
+                name={known?.type === "multiselect" ? undefined : "spec_key"}
                 value={spec.key}
                 onChange={(e) =>
                   setSpec(i, {
@@ -184,7 +186,39 @@ export function ProductForm({
                 <option value="__new">+ New key…</option>
               </select>
             )}
-            {known?.type === "enum" ? (
+            {known?.type === "multiselect" ? (
+              // Multiple values in one row: state holds them comma-joined; on
+              // submit each checked value emits its own spec_key/spec_value pair
+              // via hidden inputs, keeping the parallel arrays aligned.
+              <div className="flex flex-1 flex-wrap gap-x-4 gap-y-1 py-1.5">
+                {known.allowed_values.map((v) => {
+                  const chosen = spec.value.split(",").map((x) => x.trim()).filter(Boolean);
+                  const checked = chosen.includes(v);
+                  return (
+                    <label key={v} className="flex items-center gap-1.5 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked
+                            ? chosen.filter((x) => x !== v)
+                            : [...chosen, v];
+                          setSpec(i, { value: next.join(",") });
+                        }}
+                        className="accent-accent"
+                      />
+                      {v}
+                      {checked && (
+                        <>
+                          <input type="hidden" name="spec_key" value={spec.key} />
+                          <input type="hidden" name="spec_value" value={v} />
+                        </>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            ) : known?.type === "enum" ? (
               <select
                 {...valueProps}
                 onChange={(e) => setSpec(i, { value: e.target.value })}

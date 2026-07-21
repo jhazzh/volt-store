@@ -27,12 +27,20 @@ export type ProductSpec = {
   value: string;
 };
 
-export type SpecKeyType = "text" | "number" | "boolean" | "enum";
+export type SpecKeyType = "text" | "number" | "boolean" | "enum" | "multiselect";
 
 export type SpecKey = {
   name: string;
   type: SpecKeyType;
-  allowed_values: string[]; // populated for enum keys, else empty
+  // enum + multiselect both draw options from spec_key_values.
+  allowed_values: string[];
+};
+
+// One selectable filter option in the facet sidebar, with its product count.
+export type SpecFacet = {
+  key: string;
+  value: string;
+  count: number;
 };
 
 export type Review = {

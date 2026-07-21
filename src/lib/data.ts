@@ -5,6 +5,7 @@ import type {
   Product,
   Review,
   ReviewStats,
+  SpecFacet,
   SpecKey,
   SpecKeyType,
 } from "@/lib/types";
@@ -26,7 +27,42 @@ export type ProductFilters = {
   category?: string;
   sort?: "newest" | "price-asc" | "price-desc";
   q?: string;
+  // Selected spec facets: key → chosen values. Same key = OR, across keys = AND.
+  specs?: Record<string, string[]>;
 };
+
+/**
+ * Product ids matching every selected spec facet (AND across keys, OR within).
+ * Returns null when no spec filters are active, so callers skip the constraint.
+ * @param {Record<string, string[]>} specs selected key → values
+ * @return {Promise<string[] | null>} matching product ids, or null
+ */
+async function productIdsForSpecs(
+  supabase: ReturnType<typeof createStaticClient>,
+  specs?: Record<string, string[]>
+): Promise<string[] | null> {
+  const keys = Object.entries(specs ?? {}).filter(([, v]) => v.length > 0);
+  if (keys.length === 0) return null;
+
+  // One set of product ids per key, then intersect (AND across keys).
+  let acc: Set<string> | null = null;
+  for (const [key, values] of keys) {
+    const { data, error } = await supabase
+      .from("product_specs")
+      .select("product_id")
+      .eq("key", key)
+      .in("value", values);
+    if (error) throw new Error(`productIdsForSpecs: ${error.message}`);
+    const rows = (data ?? []) as { product_id: string }[];
+    const ids = new Set(rows.map((r) => r.product_id));
+    acc =
+      acc === null
+        ? ids
+        : new Set([...acc].filter((id: string) => ids.has(id)));
+    if (acc.size === 0) break;
+  }
+  return [...(acc ?? [])];
+}
 
 /**
  * @param {ProductFilters} filters PLP filters
@@ -34,7 +70,12 @@ export type ProductFilters = {
  */
 export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
   const supabase = createStaticClient();
+
+  const specIds = await productIdsForSpecs(supabase, filters.specs);
+  if (specIds !== null && specIds.length === 0) return []; // no product matches
+
   let query = supabase.from("products").select("*, categories!inner(slug)");
+  if (specIds !== null) query = query.in("id", specIds);
 
   if (filters.category) query = query.eq("categories.slug", filters.category);
   if (filters.q) {
@@ -101,10 +142,14 @@ export async function searchProducts(
     searchProductsSemantic(q, 24),
   ]);
 
-  // Semantic ignores category, so re-apply it here to keep the filter honest.
-  const allowedIds = filters.category
+  // Semantic ignores category/spec filters, so re-apply them here to keep the
+  // filter honest.
+  const hasFacets = filters.category || Object.keys(filters.specs ?? {}).length > 0;
+  const allowedIds = hasFacets
     ? new Set(
-        (await getProducts({ category: filters.category })).map((p) => p.id)
+        (
+          await getProducts({ category: filters.category, specs: filters.specs })
+        ).map((p) => p.id)
       )
     : null;
 
@@ -198,5 +243,20 @@ export async function getSpecKeys(): Promise<SpecKey[]> {
     name: k.name,
     type: k.type as SpecKeyType,
     allowed_values: (k.spec_key_values ?? []).map((v: { value: string }) => v.value),
+  }));
+}
+
+/**
+ * Spec (key, value) options with product counts, for the filter sidebar.
+ * @return {Promise<SpecFacet[]>} facets ordered by key then value
+ */
+export async function getSpecFacets(): Promise<SpecFacet[]> {
+  const supabase = createStaticClient();
+  const { data, error } = await supabase.rpc("spec_facets");
+  if (error) throw new Error(`getSpecFacets: ${error.message}`);
+  return (data ?? []).map((f: { key: string; value: string; count: number }) => ({
+    key: f.key,
+    value: f.value,
+    count: Number(f.count),
   }));
 }

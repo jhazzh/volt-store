@@ -130,7 +130,7 @@ async function saveSpecs(
     if (k.type === "number" && !Number.isFinite(Number(r.value))) {
       return `"${r.key}" must be a number`;
     }
-    if (k.type === "enum") {
+    if (k.type === "enum" || k.type === "multiselect") {
       const allowed = (k.spec_key_values ?? []).map((v: { value: string }) => v.value);
       if (!allowed.includes(r.value)) return `"${r.value}" isn't an option for "${r.key}"`;
     }
