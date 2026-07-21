@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { mergeSearchResults } from "@/lib/merge";
-import type { Category, Product } from "@/lib/types";
+import type { Category, Product, Review, ReviewStats } from "@/lib/types";
 
 /**
  * Cookieless client for public catalog reads — keeps pages static/ISR.
@@ -117,6 +117,34 @@ export async function getProduct(slug: string): Promise<Product | null> {
     .maybeSingle();
   if (error) throw new Error(`getProduct: ${error.message}`);
   return data;
+}
+
+/**
+ * @param {string} productId product id
+ * @return {Promise<Review[]>} newest reviews first
+ */
+export async function getReviews(productId: string): Promise<Review[]> {
+  const supabase = createStaticClient();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("*")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`getReviews: ${error.message}`);
+  return data ?? [];
+}
+
+/**
+ * @param {string} productId product id
+ * @return {Promise<ReviewStats>} count + average rating
+ */
+export async function getReviewStats(productId: string): Promise<ReviewStats> {
+  const supabase = createStaticClient();
+  const { data, error } = await supabase
+    .rpc("review_stats", { p_product_id: productId })
+    .maybeSingle<ReviewStats>();
+  if (error) throw new Error(`getReviewStats: ${error.message}`);
+  return data ?? { count: 0, average: null };
 }
 
 /**

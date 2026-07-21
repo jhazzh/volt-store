@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { ViewTransition } from "react";
+import { ViewTransition, Suspense } from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
+import { ReviewsSection } from "@/components/reviews-section";
 import { getProduct, getProducts } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
 
@@ -98,6 +99,18 @@ export default async function ProductPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Reviews read cookies (auth) — stream them so the product shell above
+          stays static/ISR. */}
+      <Suspense
+        fallback={
+          <p className="mx-auto mt-14 max-w-6xl px-4 text-sm text-muted">
+            Loading reviews…
+          </p>
+        }
+      >
+        <ReviewsSection product={product} slug={slug} />
+      </Suspense>
     </div>
   );
 }

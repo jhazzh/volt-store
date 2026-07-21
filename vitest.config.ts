@@ -11,7 +11,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src")
+      "@": path.resolve(__dirname, "src"),
+      // server-only throws when imported outside a Server Component; stub it so
+      // server libs (e.g. reviews-summary) can be unit-tested.
+      "server-only": path.resolve(__dirname, "vitest.server-only-stub.ts")
     }
   },
   test: {

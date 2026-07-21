@@ -15,6 +15,7 @@
     "test:perf": "playwright test perf",
     "seed": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed.mjs",
     "seed:digital": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed-digital.mjs",
+    "seed:reviews": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed-reviews.mjs",
     "embed": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/embed-products.mjs",
     "create:bucket": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/create-bucket.mjs",
     "make:admin": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/make-admin.mjs",

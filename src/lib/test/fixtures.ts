@@ -19,6 +19,8 @@ export function makeProduct(overrides: Partial<Product> = {}): Product {
     delivery_value: null,
     image_url: "/nimbus.jpg",
     category_id: "c1",
+    review_summary: null,
+    review_summary_count: 0,
     created_at: "2026-01-01T00:00:00Z",
     ...overrides,
   };

@@ -16,7 +16,23 @@ export type Product = {
   delivery_value: string | null;
   image_url: string | null;
   category_id: string | null;
+  review_summary: string | null;
+  review_summary_count: number;
   created_at: string;
+};
+
+export type Review = {
+  id: string;
+  product_id: string;
+  user_id: string;
+  rating: number;
+  body: string;
+  created_at: string;
+};
+
+export type ReviewStats = {
+  count: number;
+  average: number | null;
 };
 
 export type CartItem = {

@@ -16,6 +16,15 @@ export const checkoutSchema = z.object({
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
+/** Review submission — server checks verified purchase via RLS. */
+export const reviewSchema = z.object({
+  productId: z.uuid(),
+  rating: z.coerce.number().int().min(1).max(5),
+  body: z.string().trim().max(2000).default(""),
+});
+
+export type ReviewInput = z.infer<typeof reviewSchema>;
+
 export const authSchema = z.object({
   email: z.email(),
   password: z.string().min(8).max(72),
