@@ -35,7 +35,7 @@ export function ProductCard({
           </ViewTransition>
         )}
       </div>
-      <div className="mt-3 flex items-start justify-between gap-2">
+      <div className="mt-3 flex flex-wrap items-start justify-between gap-2">
         <h3 className="text-sm font-medium">{product.name}</h3>
         <p className="text-sm font-semibold text-accent">{formatPrice(product.price)}</p>
       </div>

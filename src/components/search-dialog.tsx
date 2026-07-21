@@ -15,6 +15,7 @@ const emptySubscribe = () => () => {};
 const PLACEHOLDERS = [
   "a loud speaker under $50",
   "something for storing a laptop under $150",
+  "cheapest black things above $150",
   "a controller"
 ];
 
