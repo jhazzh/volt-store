@@ -21,36 +21,41 @@ export function Filters({ categories }: { categories: Category[] }) {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <label className="text-sm text-muted" htmlFor="category">
-        Category
-      </label>
-      <select
-        id="category"
-        value={params.get("category") ?? ""}
-        onChange={(e) => update("category", e.target.value)}
-        className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-      >
-        <option value="">All</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.slug}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+      {/* Each label+select stays together; the two groups wrap as units. */}
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-muted" htmlFor="category">
+          Category
+        </label>
+        <select
+          id="category"
+          value={params.get("category") ?? ""}
+          onChange={(e) => update("category", e.target.value)}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+        >
+          <option value="">All</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.slug}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <label className="ml-2 text-sm text-muted" htmlFor="sort">
-        Sort
-      </label>
-      <select
-        id="sort"
-        value={params.get("sort") ?? "newest"}
-        onChange={(e) => update("sort", e.target.value)}
-        className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-      >
-        <option value="newest">Newest</option>
-        <option value="price-asc">Price: low → high</option>
-        <option value="price-desc">Price: high → low</option>
-      </select>
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-muted" htmlFor="sort">
+          Sort
+        </label>
+        <select
+          id="sort"
+          value={params.get("sort") ?? "newest"}
+          onChange={(e) => update("sort", e.target.value)}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+        >
+          <option value="newest">Newest</option>
+          <option value="price-asc">Price: low → high</option>
+          <option value="price-desc">Price: high → low</option>
+        </select>
+      </div>
     </div>
   );
 }

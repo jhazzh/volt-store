@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCart } from "@/components/cart/cart-context";
 import { SearchDialog } from "@/components/search-dialog";
+import { MobileMenu } from "@/components/mobile-menu";
 import { cartCount } from "@/lib/cart";
 
 /**
@@ -21,21 +22,31 @@ export function Navbar() {
         <Link href="/" className="text-lg font-bold tracking-tight">
           Volt<span className="text-accent">Store</span>
         </Link>
-        <div className="flex items-center gap-6 text-sm">
+        <div className="flex items-center gap-3 text-sm sm:gap-6">
           <SearchDialog />
-          <Link href="/products" className="hover:text-accent transition-colors">
+          <Link href="/products" className="hidden hover:text-accent transition-colors sm:inline">
             Products
           </Link>
-          <Link href="/account" className="hover:text-accent transition-colors">
+          <Link href="/account" className="hidden hover:text-accent transition-colors sm:inline">
             Account
           </Link>
           <button
             type="button"
             onClick={() => setOpen(true)}
             aria-label={`Open cart, ${count} items`}
-            className="relative rounded-md border border-border px-3 py-1.5 hover:border-accent transition-colors"
+            className="relative rounded-md border border-border p-1.5 hover:border-accent transition-colors sm:px-3"
           >
-            Cart
+            {/* Icon on mobile, text on desktop. */}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden className="sm:hidden">
+              <path
+                d="M2 3h2l1.5 9h9l1.5-6H5M8 16.5a.5.5 0 11-1 0 .5.5 0 011 0zm7 0a.5.5 0 11-1 0 .5.5 0 011 0z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="hidden sm:inline">Cart</span>
             {count > 0 && (
               <span
                 aria-hidden
@@ -45,6 +56,7 @@ export function Navbar() {
               </span>
             )}
           </button>
+          <MobileMenu />
         </div>
       </nav>
     </header>
