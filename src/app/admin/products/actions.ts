@@ -110,6 +110,41 @@ async function saveSpecs(
 
   const rows = parseSpecs(productId, formData);
   if (rows.length === 0) return undefined;
+
+  // Validate values against each key's type before writing (enum FK isn't
+  // enforced at the DB level — see 0020).
+  const uniqueKeys = [...new Set(rows.map((r) => r.key))];
+  const { data: known, error: fetchError } = await supabase
+    .from("spec_keys")
+    .select("name, type, spec_key_values(value)")
+    .in("name", uniqueKeys);
+  if (fetchError) return fetchError.message;
+
+  const byName = new Map(known?.map((k) => [k.name, k]) ?? []);
+  for (const r of rows) {
+    const k = byName.get(r.key);
+    if (!k) continue; // brand-new key → created below as free-text
+    if (k.type === "boolean" && r.value !== "Yes" && r.value !== "No") {
+      return `"${r.key}" must be Yes or No`;
+    }
+    if (k.type === "number" && !Number.isFinite(Number(r.value))) {
+      return `"${r.key}" must be a number`;
+    }
+    if (k.type === "enum") {
+      const allowed = (k.spec_key_values ?? []).map((v: { value: string }) => v.value);
+      if (!allowed.includes(r.value)) return `"${r.value}" isn't an option for "${r.key}"`;
+    }
+  }
+
+  // Register any brand-new keys (default type 'text') — the FK rejects unknowns.
+  const newKeys = uniqueKeys.filter((n) => !byName.has(n)).map((name) => ({ name }));
+  if (newKeys.length > 0) {
+    const { error: keyError } = await supabase
+      .from("spec_keys")
+      .upsert(newKeys, { onConflict: "name", ignoreDuplicates: true });
+    if (keyError) return keyError.message;
+  }
+
   const { error } = await supabase.from("product_specs").insert(rows);
   return error?.message;
 }

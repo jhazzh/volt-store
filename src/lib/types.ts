@@ -27,6 +27,14 @@ export type ProductSpec = {
   value: string;
 };
 
+export type SpecKeyType = "text" | "number" | "boolean" | "enum";
+
+export type SpecKey = {
+  name: string;
+  type: SpecKeyType;
+  allowed_values: string[]; // populated for enum keys, else empty
+};
+
 export type Review = {
   id: string;
   product_id: string;

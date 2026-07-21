@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { draftDescription } from "@/app/admin/products/actions";
-import type { Category, Product, ProductSpec } from "@/lib/types";
+import type { Category, Product, ProductSpec, SpecKey } from "@/lib/types";
 
 type Action = (prev: { error?: string }, formData: FormData) => Promise<{ error?: string }>;
 
@@ -14,10 +14,12 @@ type Action = (prev: { error?: string }, formData: FormData) => Promise<{ error?
 export function ProductForm({
   action,
   categories,
+  specKeys,
   product,
 }: {
   action: Action;
   categories: Category[];
+  specKeys: SpecKey[];
   product?: Product;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -141,22 +143,76 @@ export function ProductForm({
         {specs.length === 0 && (
           <p className="text-xs text-muted">No specs. Add rows like Material → Aluminum.</p>
         )}
-        {specs.map((spec, i) => (
+        {specs.map((spec, i) => {
+          const known = specKeys.find((k) => k.name === spec.key);
+          // A row is "adding a new key" when its key isn't in the vocabulary.
+          const isNewKey = spec.key.trim() !== "" && !known;
+          const valueProps = {
+            name: "spec_value",
+            value: spec.value,
+            className: `${field} mt-0 flex-1`,
+          };
+          return (
           <div key={i} className="flex gap-2">
-            <input
-              name="spec_key"
-              value={spec.key}
-              onChange={(e) => setSpec(i, { key: e.target.value })}
-              placeholder="Key (e.g. Material)"
-              className={`${field} mt-0 flex-1`}
-            />
-            <input
-              name="spec_value"
-              value={spec.value}
-              onChange={(e) => setSpec(i, { value: e.target.value })}
-              placeholder="Value (e.g. Aluminum)"
-              className={`${field} mt-0 flex-1`}
-            />
+            {isNewKey ? (
+              <input
+                name="spec_key"
+                value={spec.key.trimStart()}
+                onChange={(e) => setSpec(i, { key: e.target.value })}
+                placeholder="New key (free-text value)"
+                autoFocus
+                className={`${field} mt-0 flex-1`}
+              />
+            ) : (
+              <select
+                name="spec_key"
+                value={spec.key}
+                onChange={(e) =>
+                  setSpec(i, {
+                    key: e.target.value === "__new" ? " " : e.target.value,
+                    value: "", // reset value when the key (and its type) changes
+                  })
+                }
+                className={`${field} mt-0 flex-1`}
+              >
+                <option value="">— select key —</option>
+                {specKeys.map((k) => (
+                  <option key={k.name} value={k.name}>
+                    {k.name}
+                  </option>
+                ))}
+                <option value="__new">+ New key…</option>
+              </select>
+            )}
+            {known?.type === "enum" ? (
+              <select
+                {...valueProps}
+                onChange={(e) => setSpec(i, { value: e.target.value })}
+              >
+                <option value="">— select value —</option>
+                {known.allowed_values.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            ) : known?.type === "boolean" ? (
+              <select
+                {...valueProps}
+                onChange={(e) => setSpec(i, { value: e.target.value })}
+              >
+                <option value="">— select —</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            ) : (
+              <input
+                {...valueProps}
+                type={known?.type === "number" ? "number" : "text"}
+                onChange={(e) => setSpec(i, { value: e.target.value })}
+                placeholder="Value"
+              />
+            )}
             <button
               type="button"
               onClick={() => removeSpec(i)}
@@ -166,7 +222,8 @@ export function ProductForm({
               ✕
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div>

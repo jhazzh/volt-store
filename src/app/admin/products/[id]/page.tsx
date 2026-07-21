@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getCategories } from "@/lib/data";
+import { getCategories, getSpecKeys } from "@/lib/data";
 import { updateProduct } from "@/app/admin/products/actions";
 import { ProductForm } from "@/components/admin/product-form";
 import type { Product } from "@/lib/types";
@@ -29,13 +29,18 @@ export default async function EditProductPage({
   const { product_specs, ...rest } = row;
   const product = { ...rest, specs: product_specs ?? [] } as Product;
 
-  const categories = await getCategories();
+  const [categories, specKeys] = await Promise.all([getCategories(), getSpecKeys()]);
   const action = updateProduct.bind(null, id); // (prev, formData) => …
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10">
       <h1 className="mb-6 text-2xl font-bold">Edit product</h1>
-      <ProductForm action={action} categories={categories} product={product} />
+      <ProductForm
+        action={action}
+        categories={categories}
+        specKeys={specKeys}
+        product={product}
+      />
     </div>
   );
 }

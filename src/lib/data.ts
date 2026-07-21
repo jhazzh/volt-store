@@ -1,6 +1,13 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { mergeSearchResults } from "@/lib/merge";
-import type { Category, Product, Review, ReviewStats } from "@/lib/types";
+import type {
+  Category,
+  Product,
+  Review,
+  ReviewStats,
+  SpecKey,
+  SpecKeyType,
+} from "@/lib/types";
 
 /**
  * Cookieless client for public catalog reads — keeps pages static/ISR.
@@ -173,4 +180,23 @@ export async function getCategories(): Promise<Category[]> {
   const { data, error } = await supabase.from("categories").select("*").order("name");
   if (error) throw new Error(`getCategories: ${error.message}`);
   return data ?? [];
+}
+
+/**
+ * Controlled vocabulary of spec keys, with type and (for enums) allowed values.
+ * @return {Promise<SpecKey[]>} spec keys, alphabetical
+ */
+export async function getSpecKeys(): Promise<SpecKey[]> {
+  const supabase = createStaticClient();
+  const { data, error } = await supabase
+    .from("spec_keys")
+    .select("name, type, spec_key_values(value)")
+    .order("name")
+    .order("position", { referencedTable: "spec_key_values" });
+  if (error) throw new Error(`getSpecKeys: ${error.message}`);
+  return (data ?? []).map((k) => ({
+    name: k.name,
+    type: k.type as SpecKeyType,
+    allowed_values: (k.spec_key_values ?? []).map((v: { value: string }) => v.value),
+  }));
 }

@@ -21,6 +21,11 @@ export default async function AdminPage() {
             Manage categories →
           </Link>
         </li>
+        <li>
+          <Link href="/admin/spec-keys" className="text-accent hover:underline">
+            Manage spec keys →
+          </Link>
+        </li>
       </ul>
     </div>
   );
