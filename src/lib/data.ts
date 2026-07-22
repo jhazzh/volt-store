@@ -129,6 +129,27 @@ export async function searchProductsSemantic(
   return data ?? [];
 }
 
+/**
+ * Products most similar to a given one by embedding, excluding itself.
+ * No LLM call — uses the product's stored embedding. Returns [] on failure so
+ * the page just omits the section.
+ * @param {string} id source product id
+ * @param {number} limit max results
+ * @return {Promise<Product[]>} nearest products, cross-category
+ */
+export async function getRelatedProducts(
+  id: string,
+  limit = 4
+): Promise<Product[]> {
+  const supabase = createStaticClient();
+  const { data, error } = await supabase.rpc("related_products", {
+    source_id: id,
+    match_count: limit,
+  });
+  if (error) return [];
+  return data ?? [];
+}
+
 export type SearchResolved = {
   products: Product[];
   // Filters actually applied, incl. anything the LLM parsed from the query.
