@@ -28,7 +28,7 @@ describe("callLLM provider failover", () => {
     // First call hits Groq, second hits Gemini — with each provider's model.
     expect(fetchMock.mock.calls[0][0]).toContain("api.groq.com");
     expect(fetchMock.mock.calls[1][0]).toContain("generativelanguage.googleapis.com");
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body).model).toBe("gemini-2.0-flash");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).model).toBe("gemini-flash-latest");
   });
 
   it("uses Groq's response and skips Gemini when Groq is fine", async () => {

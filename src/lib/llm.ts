@@ -19,7 +19,9 @@ function chain(): Provider[] {
     },
     {
       url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      model: "gemini-2.0-flash",
+      // *-latest tracks a model with live free-tier quota; pinned 2.0-flash was
+      // zeroed to limit:0 for free tier.
+      model: "gemini-flash-latest",
       key: process.env.GEMINI_API_KEY,
     },
   ].filter((p) => p.key);
