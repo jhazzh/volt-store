@@ -43,12 +43,18 @@ export type SpecFacet = {
   count: number;
 };
 
+export type ReviewTag = {
+  topic: string; // short aspect, e.g. "battery", "price"
+  sentiment: "positive" | "neutral" | "negative";
+};
+
 export type Review = {
   id: string;
   product_id: string;
   user_id: string;
   rating: number;
   body: string;
+  tags: ReviewTag[];
   created_at: string;
 };
 

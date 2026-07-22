@@ -2,13 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getReviews, getReviewStats } from "@/lib/data";
 import { Stars } from "@/components/stars";
 import { ReviewForm } from "@/components/review-form";
+import { ReviewList } from "@/components/review-list";
 import type { Product } from "@/lib/types";
-
-const dateFmt = new Intl.DateTimeFormat("en-US", {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-});
 
 type Props = { product: Product; slug: string };
 
@@ -58,19 +53,7 @@ export async function ReviewsSection({ product, slug }: Props) {
         </div>
       )}
 
-      <ul className="mt-6 space-y-5">
-        {reviews.map((r) => (
-          <li key={r.id} className="border-b border-border pb-5">
-            <div className="flex items-center gap-2">
-              <Stars rating={r.rating} />
-              <span className="text-xs text-muted">
-                {dateFmt.format(new Date(r.created_at))}
-              </span>
-            </div>
-            {r.body && <p className="mt-2 leading-relaxed">{r.body}</p>}
-          </li>
-        ))}
-      </ul>
+      <ReviewList reviews={reviews} />
 
       {user ? (
         <div className="mt-8 max-w-lg">

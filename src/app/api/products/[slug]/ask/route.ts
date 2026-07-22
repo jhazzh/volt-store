@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { getProduct, getReviews } from "@/lib/data";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { askProduct } from "@/lib/product-qa";
+import { askProduct, MAX_REVIEWS } from "@/lib/product-qa";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -36,7 +36,7 @@ export async function POST(request: Request, { params }: Params) {
   if (!product) {
     return Response.json({ error: "Product not found" }, { status: 404 });
   }
-  const reviews = await getReviews(product.id);
+  const reviews = await getReviews(product.id, MAX_REVIEWS);
 
   const stream = await askProduct(question, { product, reviews });
   if (!stream) {

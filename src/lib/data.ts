@@ -273,15 +273,21 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
 
 /**
  * @param {string} productId product id
+ * @param {number} [limit] cap rows (omit to fetch all)
  * @return {Promise<Review[]>} newest reviews first
  */
-export async function getReviews(productId: string): Promise<Review[]> {
+export async function getReviews(
+  productId: string,
+  limit?: number
+): Promise<Review[]> {
   const supabase = createStaticClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("reviews")
     .select("*")
     .eq("product_id", productId)
     .order("created_at", { ascending: false });
+  if (limit) query = query.limit(limit);
+  const { data, error } = await query;
   if (error) throw new Error(`getReviews: ${error.message}`);
   return data ?? [];
 }

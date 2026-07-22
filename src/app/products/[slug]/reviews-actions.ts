@@ -8,6 +8,7 @@ import {
   needsSummary,
   summarizeReviews,
 } from "@/lib/reviews-summary";
+import { extractReviewTags } from "@/lib/review-tags";
 import type { Review } from "@/lib/types";
 
 export type ReviewState = { error?: string; ok?: boolean };
@@ -46,10 +47,16 @@ export async function submitReview(
 
   const { productId, rating, body } = parsed.data;
 
+  // Extract aspect tags before the write so the row lands with them already
+  // set. Best-effort: extractReviewTags returns [] on no-key/failure, so a
+  // review always saves even when the LLM is down.
+  const tags = await extractReviewTags(body);
+
   // Upsert so a shopper can revise their review; the unique (product_id,
-  // user_id) constraint makes this idempotent.
+  // user_id) constraint makes this idempotent. Re-running replaces tags too,
+  // so an edited review gets freshly extracted tags.
   const { error } = await supabase.from("reviews").upsert(
-    { product_id: productId, user_id: user.id, rating, body },
+    { product_id: productId, user_id: user.id, rating, body, tags },
     { onConflict: "product_id,user_id" }
   );
   if (error) {

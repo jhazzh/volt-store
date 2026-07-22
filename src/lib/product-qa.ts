@@ -4,7 +4,7 @@ import type { Product, Review } from "@/lib/types";
 
 // Cap reviews fed to the model so a popular product can't blow up the prompt;
 // newest reviews are the most representative.
-const MAX_REVIEWS = 40;
+export const MAX_REVIEWS = 40;
 
 const SYSTEM_PROMPT =
   "You answer a shopper's question about one product for an online store. " +
