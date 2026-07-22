@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
 import { RelatedProducts } from "@/components/related-products";
 import { ReviewsSection } from "@/components/reviews-section";
+import { ProductQA } from "@/components/product-qa";
 import { getProduct, getProducts } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
 
@@ -114,6 +115,9 @@ export default async function ProductPage({ params }: Props) {
       {/* Static — bakes into the ISR page (cached). No LLM call: uses the
           product's stored embedding. */}
       <RelatedProducts id={product.id} />
+
+      {/* Client component — asks the LLM on demand, so it stays out of ISR. */}
+      <ProductQA slug={slug} />
 
       {/* Reviews read cookies (auth) — stream them so the product shell above
           stays static/ISR. */}

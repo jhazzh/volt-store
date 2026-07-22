@@ -19,7 +19,6 @@ export function CompareVerdict({ ids }: { ids: string[] }) {
 
   useEffect(() => {
     let active = true;
-    setState({ status: "loading" });
     fetch("/api/compare", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
