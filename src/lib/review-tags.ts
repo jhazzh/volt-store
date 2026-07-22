@@ -1,5 +1,5 @@
 import "server-only";
-import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
+import { callLLM, llmEnabled } from "@/lib/llm";
 import type { ReviewTag } from "@/lib/types";
 
 // Cap tags per review so one rambling review can't produce a wall of chips.
@@ -42,32 +42,19 @@ function clean(raw: unknown): ReviewTag[] {
  * @return {Promise<ReviewTag[]>} cleaned tags, newest-salient first
  */
 export async function extractReviewTags(body: string): Promise<ReviewTag[]> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key || !body.trim()) return [];
+  if (!llmEnabled() || !body.trim()) return [];
 
-  let res: Response;
-  try {
-    res = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        max_tokens: 200,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: body.slice(0, 2000) },
-        ],
-      }),
-    });
-  } catch {
-    return []; // network error — store no tags, review still saves
-  }
-  if (!res.ok) return [];
+  // callLLM handles network errors and 429 fallback; null → store no tags.
+  const res = await callLLM({
+    max_tokens: 200,
+    temperature: 0,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: body.slice(0, 2000) },
+    ],
+  });
+  if (!res?.ok) return [];
 
   const data = await res.json().catch(() => null);
   const text: string | undefined = data?.choices?.[0]?.message?.content;

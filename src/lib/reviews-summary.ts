@@ -7,7 +7,7 @@ export const SUMMARY_REFRESH_EVERY = 5;
 // Below this, a summary adds nothing over just showing the reviews.
 export const SUMMARY_MIN_REVIEWS = 3;
 
-import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
+import { callLLM, llmEnabled } from "@/lib/llm";
 
 const SYSTEM_PROMPT =
   "You summarize customer reviews for an online store. Write 2-3 plain " +
@@ -40,8 +40,7 @@ export async function summarizeReviews(
   productName: string,
   reviews: Review[]
 ): Promise<string | null> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) return null;
+  if (!llmEnabled()) return null;
 
   // Cap input so a product with thousands of reviews can't blow up the prompt;
   // the newest reviews are the most representative.
@@ -50,27 +49,19 @@ export async function summarizeReviews(
     .map((r) => `[${r.rating}/5] ${r.body}`.trim())
     .join("\n");
 
-  const res = await fetch(GROQ_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      max_tokens: 300,
-      temperature: 0.3,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `Product: ${productName}\n\nReviews:\n${sample}`,
-        },
-      ],
-    }),
+  const res = await callLLM({
+    max_tokens: 300,
+    temperature: 0.3,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: `Product: ${productName}\n\nReviews:\n${sample}`,
+      },
+    ],
   });
 
-  if (!res.ok) return null; // rate limited / transient — keep the old summary
+  if (!res?.ok) return null; // rate limited / transient — keep the old summary
   const data = await res.json();
   const text: string | undefined = data?.choices?.[0]?.message?.content;
   return text?.trim() ?? null;

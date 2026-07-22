@@ -24,8 +24,9 @@ describe("extractReviewTags", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns [] without an API key, skipping the call", async () => {
+  it("returns [] with no provider configured, skipping the call", async () => {
     vi.stubEnv("GROQ_API_KEY", "");
+    vi.stubEnv("GEMINI_API_KEY", ""); // both providers off
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
     expect(await extractReviewTags("great battery")).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();

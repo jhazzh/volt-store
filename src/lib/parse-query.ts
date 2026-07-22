@@ -1,6 +1,6 @@
 import "server-only";
 
-import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
+import { callLLM, llmEnabled } from "@/lib/llm";
 
 export type ParsedQuery = {
   // What to embed for semantic search — the descriptive part, prices stripped.
@@ -65,8 +65,7 @@ export async function parseQuery(
   categories: string[]
 ): Promise<ParsedQuery> {
   const raw = text.trim();
-  const key = process.env.GROQ_API_KEY;
-  if (!key || !raw) return { q: raw };
+  if (!llmEnabled() || !raw) return { q: raw };
 
   // Category list is part of the key: same text can parse differently if the
   // available categories change.
@@ -75,14 +74,8 @@ export async function parseQuery(
   if (hit) return hit;
 
   try {
-    const res = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
+    const res = await callLLM(
+      {
         max_tokens: 80,
         temperature: 0,
         response_format: { type: "json_object" },
@@ -93,10 +86,10 @@ export async function parseQuery(
             content: `Categories: ${categories.join(", ")}\n\nSearch: ${raw}`,
           },
         ],
-      }),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return { q: raw };
+      },
+      AbortSignal.timeout(5000)
+    );
+    if (!res?.ok) return { q: raw };
 
     const data = await res.json();
     const content = data?.choices?.[0]?.message?.content;

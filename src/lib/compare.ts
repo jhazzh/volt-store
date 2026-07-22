@@ -1,6 +1,6 @@
 import "server-only";
 import { COMPARE_MAX, COMPARE_MIN } from "@/lib/compare-limits";
-import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
+import { callLLM, llmEnabled } from "@/lib/llm";
 import type { Product } from "@/lib/types";
 
 // Re-export so server callers keep importing limits from here.
@@ -33,32 +33,23 @@ function describe(p: Product): string {
 export async function compareProducts(
   products: Product[]
 ): Promise<string | null> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key || products.length < COMPARE_MIN) return null;
+  if (!llmEnabled() || products.length < COMPARE_MIN) return null;
 
   const body = products
     .slice(0, COMPARE_MAX)
     .map((p, i) => `Product ${i + 1}\n${describe(p)}`)
     .join("\n\n");
 
-  const res = await fetch(GROQ_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      max_tokens: 300,
-      temperature: 0.4,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: body },
-      ],
-    }),
+  const res = await callLLM({
+    max_tokens: 300,
+    temperature: 0.4,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: body },
+    ],
   });
 
-  if (!res.ok) return null; // rate limited / transient
+  if (!res?.ok) return null; // rate limited / transient
   const data = await res.json();
   const text: string | undefined = data?.choices?.[0]?.message?.content;
   return text?.trim() ?? null;

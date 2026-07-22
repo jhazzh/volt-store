@@ -1,5 +1,5 @@
 import "server-only";
-import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
+import { callLLM, llmEnabled } from "@/lib/llm";
 import type { Product, Review } from "@/lib/types";
 
 // Cap reviews fed to the model so a popular product can't blow up the prompt;
@@ -69,35 +69,26 @@ export async function askProduct(
   question: string,
   context: QaContext
 ): Promise<ReadableStream<Uint8Array> | null> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) return null;
+  if (!llmEnabled()) return null;
 
-  const res = await fetch(GROQ_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      max_tokens: 300,
-      temperature: 0.2,
-      stream: true,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `${buildContext(context)}\n\n<question>\n${sanitize(question)}\n</question>`,
-        },
-      ],
-    }),
+  const res = await callLLM({
+    max_tokens: 300,
+    temperature: 0.2,
+    stream: true,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: `${buildContext(context)}\n\n<question>\n${sanitize(question)}\n</question>`,
+      },
+    ],
   });
 
-  if (!res.ok || !res.body) return null; // rate limited / transient
+  if (!res?.ok || !res.body) return null; // rate limited / transient
   return toTextStream(res.body);
 }
 
-// Groq streams OpenAI-style SSE: lines of `data: {json}`, ending in
+// Providers stream OpenAI-style SSE: lines of `data: {json}`, ending in
 // `data: [DONE]`. Pull the token deltas out and re-emit plain UTF-8 text.
 function toTextStream(
   body: ReadableStream<Uint8Array>

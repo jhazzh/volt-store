@@ -1,5 +1,5 @@
 import "server-only";
-import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
+import { callLLM, llmEnabled } from "@/lib/llm";
 
 const SYSTEM_PROMPT =
   "You write product descriptions for an online store. Given a product's " +
@@ -26,8 +26,7 @@ export type DescriptionInput = {
 export async function generateDescription(
   input: DescriptionInput
 ): Promise<string | null> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) return null;
+  if (!llmEnabled()) return null;
 
   const details = [
     `Name: ${input.name}`,
@@ -38,24 +37,16 @@ export async function generateDescription(
     .filter(Boolean)
     .join("\n");
 
-  const res = await fetch(GROQ_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      max_tokens: 300,
-      temperature: 0.7,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: details },
-      ],
-    }),
+  const res = await callLLM({
+    max_tokens: 300,
+    temperature: 0.7,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: details },
+    ],
   });
 
-  if (!res.ok) return null; // rate limited / transient
+  if (!res?.ok) return null; // rate limited / transient
   const data = await res.json();
   const text: string | undefined = data?.choices?.[0]?.message?.content;
   return text?.trim() ?? null;
