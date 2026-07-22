@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CompareBar } from "@/components/compare/compare-bar";
 import { Filters } from "@/components/filters";
 import { SyncParsedFilters } from "@/components/sync-parsed-filters";
 import { ProductCard } from "@/components/product-card";
@@ -98,6 +99,7 @@ export default async function ProductsPage({ searchParams }: Props) {
           </div>
         </div>
       </FilterPendingProvider>
+      <CompareBar />
     </div>
   );
 }

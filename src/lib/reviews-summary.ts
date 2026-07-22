@@ -1,5 +1,4 @@
 import "server-only";
-import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
 import type { Review } from "@/lib/types";
 
 // Regenerate the cached summary only after this many new reviews accumulate,
@@ -7,6 +6,8 @@ import type { Review } from "@/lib/types";
 export const SUMMARY_REFRESH_EVERY = 5;
 // Below this, a summary adds nothing over just showing the reviews.
 export const SUMMARY_MIN_REVIEWS = 3;
+
+import { GROQ_MODEL, GROQ_URL } from "@/lib/groq";
 
 const SYSTEM_PROMPT =
   "You summarize customer reviews for an online store. Write 2-3 plain " +

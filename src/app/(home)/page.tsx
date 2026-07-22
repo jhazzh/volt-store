@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CompareBar } from "@/components/compare/compare-bar";
 import { ProductCard } from "@/components/product-card";
 import { getFeaturedProducts } from "@/lib/data";
 
@@ -38,6 +39,7 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+      <CompareBar />
     </div>
   );
 }

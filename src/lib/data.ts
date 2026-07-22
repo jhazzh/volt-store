@@ -247,6 +247,31 @@ export async function getProduct(slug: string): Promise<Product | null> {
 }
 
 /**
+ * Fetch several products (with specs) by id, for the compare page.
+ * Order follows the ids argument so the UI columns stay stable.
+ * @param {string[]} ids product ids to fetch
+ * @return {Promise<Product[]>} found products, in ids order
+ */
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  if (ids.length === 0) return [];
+  const supabase = createStaticClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("*, product_specs(key, value)")
+    .in("id", ids)
+    .order("position", { referencedTable: "product_specs" });
+  if (error) throw new Error(`getProductsByIds: ${error.message}`);
+  const byId = new Map(
+    (data ?? []).map((row) => {
+      const { product_specs, ...product } = row;
+      return [product.id, { ...product, specs: product_specs ?? [] } as Product];
+    })
+  );
+  // Preserve the requested order; drop ids that no longer exist.
+  return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
+}
+
+/**
  * @param {string} productId product id
  * @return {Promise<Review[]>} newest reviews first
  */

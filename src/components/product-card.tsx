@@ -1,6 +1,7 @@
 import { ViewTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { CompareToggle } from "@/components/compare/compare-toggle";
 import { formatPrice } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
@@ -21,6 +22,7 @@ export function ProductCard({
       className="group rounded-xl border border-border bg-card p-3 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-lg"
     >
       <div className="relative aspect-square overflow-hidden rounded-lg bg-border">
+        <CompareToggle id={product.id} name={product.name} />
         {product.image_url && (
           <ViewTransition name={`product-image-${product.id}`} share="morph">
             <Image

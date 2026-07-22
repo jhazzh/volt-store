@@ -1,3 +1,4 @@
+import { CompareBar } from "@/components/compare/compare-bar";
 import { ProductCard } from "@/components/product-card";
 import { getRelatedProducts } from "@/lib/data";
 
@@ -19,6 +20,7 @@ export async function RelatedProducts({ id }: { id: string }) {
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
+      <CompareBar />
     </section>
   );
 }

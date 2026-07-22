@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/components/cart/cart-context";
 import { CartDrawer } from "@/components/cart/cart-drawer";
+import { CompareProvider } from "@/components/compare/compare-context";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { siteUrl } from "@/lib/site-url";
@@ -43,10 +44,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans">
         <CartProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <CartDrawer />
+          <CompareProvider>
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <CartDrawer />
+          </CompareProvider>
         </CartProvider>
       </body>
     </html>
