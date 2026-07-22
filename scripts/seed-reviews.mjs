@@ -117,27 +117,34 @@ if (created) console.log(`Created ${created} demo reviewer(s).`);
 // --force also re-writes reviews that are already complete.
 const forceReviews = process.argv.includes("--force");
 
-// Build review rows: REVIEWS_PER_PRODUCT per product, one per reviewer. Deal
-// from the bank with a per-product offset so no two products show the same
-// sequence. Spread created_at back in time (newest = reviewer 1) so the list
-// orders naturally. Deterministic — re-running is idempotent via the upsert.
-// Products already at REVIEWS_PER_PRODUCT are skipped (nothing new to write).
+// One query for every product's current review count, instead of a count query
+// per product. Pull all product_ids for the target products and tally in JS.
+const productIds = products.map((p) => p.id);
+const reviewCount = new Map(productIds.map((id) => [id, 0]));
+{
+  const { data: allIds, error: cErr } = await supabase
+    .from("reviews")
+    .select("product_id")
+    .in("product_id", productIds);
+  if (cErr) throw cErr;
+  for (const { product_id } of allIds) {
+    reviewCount.set(product_id, (reviewCount.get(product_id) ?? 0) + 1);
+  }
+}
+
+// Build review rows only for products under REVIEWS_PER_PRODUCT (already-full
+// ones are skipped). Deal from the bank with a per-product offset so no two
+// products show the same sequence. Spread created_at back in time (newest =
+// reviewer 1). Deterministic — re-running is idempotent via the upsert.
 const DAY = 24 * 60 * 60 * 1000;
 const rows = [];
 let skipped = 0;
 for (let i = 0; i < products.length; i++) {
   const p = products[i];
 
-  if (!forceReviews) {
-    const { count, error: cErr } = await supabase
-      .from("reviews")
-      .select("*", { count: "exact", head: true })
-      .eq("product_id", p.id);
-    if (cErr) throw cErr;
-    if (count >= REVIEWS_PER_PRODUCT) {
-      skipped++;
-      continue;
-    }
+  if (!forceReviews && reviewCount.get(p.id) >= REVIEWS_PER_PRODUCT) {
+    skipped++;
+    continue;
   }
 
   for (let j = 0; j < REVIEWS_PER_PRODUCT; j++) {
@@ -151,6 +158,9 @@ for (let i = 0; i < products.length; i++) {
       created_at: new Date(Date.now() - j * DAY).toISOString(),
     });
   }
+  // The upsert below fills this product to REVIEWS_PER_PRODUCT — reflect that
+  // so the summary loop sees the fresh count, not the pre-run one.
+  reviewCount.set(p.id, REVIEWS_PER_PRODUCT);
 }
 
 if (rows.length) {
@@ -181,8 +191,33 @@ if (!key) {
 // unless --force. Avoids re-calling Groq (and hitting the TPM limit) on re-runs.
 const force = process.argv.includes("--force");
 
+// All summary states in one query, keyed by id, so we can skip up-to-date
+// products before fetching their reviews.
+const summaryState = new Map();
+{
+  const { data: rows, error } = await supabase
+    .from("products")
+    .select("id, review_summary, review_summary_count")
+    .in("id", productIds);
+  if (error) throw error;
+  for (const r of rows) summaryState.set(r.id, r);
+}
+
 let lastRes;
 for (const product of products) {
+  // Skip early using the counts we already have — no review fetch needed.
+  const state = summaryState.get(product.id);
+  const count = reviewCount.get(product.id) ?? 0;
+  if (count === 0) continue;
+  if (
+    !force &&
+    state?.review_summary &&
+    state.review_summary_count === count
+  ) {
+    console.log(`Skipped "${product.name}" (summary up to date).`);
+    continue;
+  }
+
   const { data: allReviews, error: allErr } = await supabase
     .from("reviews")
     .select("rating, body, created_at")
@@ -190,20 +225,6 @@ for (const product of products) {
     .order("created_at", { ascending: false });
   if (allErr) throw allErr;
   if (!allReviews.length) continue;
-
-  const { data: current } = await supabase
-    .from("products")
-    .select("review_summary, review_summary_count")
-    .eq("id", product.id)
-    .maybeSingle();
-  if (
-    !force &&
-    current?.review_summary &&
-    current.review_summary_count === allReviews.length
-  ) {
-    console.log(`Skipped "${product.name}" (summary up to date).`);
-    continue;
-  }
 
   const sample = allReviews
     .slice(0, 100)
