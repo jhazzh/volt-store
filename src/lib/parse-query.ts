@@ -12,13 +12,12 @@ export type ParsedQuery = {
 };
 
 const SYSTEM_PROMPT =
-  "You turn a shopper's search sentence into JSON filters for an online store. " +
-  'Reply with ONLY a JSON object: {"q": string, "minPrice"?: number, ' +
-  '"maxPrice"?: number, "category"?: string, "sort"?: "price-asc"|"price-desc"}. ' +
-  '"q" is the descriptive part with all price/category words removed (e.g. ' +
-  '"a quiet gift under $50" -> q:"quiet gift"). Set category ONLY to one from ' +
-  "the provided list, matched loosely. Use sort only when the shopper asks for " +
-  'cheapest/most expensive. Omit any field you are unsure about. No prose.';
+  "Turn a shopper's search into JSON filters. Output ONLY: " +
+  '{"q":string,"minPrice"?:number,"maxPrice"?:number,"category"?:string,' +
+  '"sort"?:"price-asc"|"price-desc"}. q = the query with price/category words ' +
+  'removed (e.g. "a quiet gift under $50" -> "quiet gift"). category = one from ' +
+  "the list, loose match. sort only if they ask cheapest/most expensive. Omit " +
+  "unsure fields. No prose.";
 
 // Cheap pre-check: only worth an LLM call when the text hints at a price,
 // number, or sort — plain keyword searches skip it and save the rate limit.
@@ -32,6 +31,25 @@ const FILTER_HINT =
  */
 export function hasFilterHint(text: string): boolean {
   return FILTER_HINT.test(text);
+}
+
+// Identical searches parse identically, so cache to skip the LLM (and its rate
+// limit) on repeats. Bounded LRU-ish: oldest key evicted past the cap.
+const CACHE_MAX = 500;
+const cache = new Map<string, ParsedQuery>();
+
+function cacheGet(k: string): ParsedQuery | undefined {
+  const v = cache.get(k);
+  if (v) {
+    cache.delete(k); // re-insert to mark as recently used
+    cache.set(k, v);
+  }
+  return v;
+}
+
+function cacheSet(k: string, v: ParsedQuery): void {
+  cache.set(k, v);
+  if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!);
 }
 
 /**
@@ -50,6 +68,12 @@ export async function parseQuery(
   const key = process.env.GROQ_API_KEY;
   if (!key || !raw) return { q: raw };
 
+  // Category list is part of the key: same text can parse differently if the
+  // available categories change.
+  const cacheKey = `${categories.join(",")}\n${raw.toLowerCase()}`;
+  const hit = cacheGet(cacheKey);
+  if (hit) return hit;
+
   try {
     const res = await fetch(GROQ_URL, {
       method: "POST",
@@ -59,7 +83,7 @@ export async function parseQuery(
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
-        max_tokens: 200,
+        max_tokens: 80,
         temperature: 0,
         response_format: { type: "json_object" },
         messages: [
@@ -76,7 +100,9 @@ export async function parseQuery(
 
     const data = await res.json();
     const content = data?.choices?.[0]?.message?.content;
-    return normalize(content, raw, categories);
+    const parsed = normalize(content, raw, categories);
+    cacheSet(cacheKey, parsed);
+    return parsed;
   } catch {
     return { q: raw };
   }
