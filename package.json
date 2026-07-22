@@ -31,7 +31,7 @@
     "@supabase/ssr": "^0.12.1",
     "@supabase/supabase-js": "^2.109.0",
     "motion": "^12.42.2",
-    "next": "16.2.10",
+    "next": "^16.2.11",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "server-only": "^0.0.1",

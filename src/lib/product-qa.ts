@@ -90,7 +90,7 @@ export async function askProduct(
 
 // Providers stream OpenAI-style SSE: lines of `data: {json}`, ending in
 // `data: [DONE]`. Pull the token deltas out and re-emit plain UTF-8 text.
-function toTextStream(
+export function toTextStream(
   body: ReadableStream<Uint8Array>
 ): ReadableStream<Uint8Array> {
   const decoder = new TextDecoder();

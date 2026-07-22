@@ -21,5 +21,10 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run test -- --run
-      - run: npm audit --audit-level=high
+      # sharp/postcss vulns live inside Next.js; no upstream fix yet. Allowlist
+      # only these known advisories so new high vulns still fail CI.
+      - name: Audit (ignore known unfixable Next.js advisories)
+        run: |
+          npx audit-ci --high \
+            --allowlist GHSA-f88m-g3jw-g9cj GHSA-qx2v-qp2m-jg93
       - run: npm run build

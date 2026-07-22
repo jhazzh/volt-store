@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CompareBar } from "@/components/compare/compare-bar";
 import { ProductCard } from "@/components/product-card";
+import { ProductQuiz } from "@/components/quiz/product-quiz";
 import { getFeaturedProducts } from "@/lib/data";
 
 export const revalidate = 3600;
@@ -39,6 +40,10 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      <div className="pb-16">
+        <ProductQuiz />
+      </div>
       <CompareBar />
     </div>
   );
