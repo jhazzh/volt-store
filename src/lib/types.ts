@@ -19,6 +19,7 @@ export type Product = {
   review_summary: string | null;
   review_summary_count: number;
   specs?: ProductSpec[];
+  released_at: string;
   created_at: string;
 };
 

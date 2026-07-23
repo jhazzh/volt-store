@@ -96,7 +96,8 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
       query = query.order("price", { ascending: false });
       break;
     default:
-      query = query.order("created_at", { ascending: false });
+      // "newest" = release recency, not row insert time.
+      query = query.order("released_at", { ascending: false });
   }
 
   const { data, error } = await query;
@@ -306,6 +307,28 @@ export async function getReviewStats(productId: string): Promise<ReviewStats> {
 }
 
 /**
+ * Personalized picks for the signed-in user, from their order history via the
+ * `picked_for_you` RPC. Per-user, so it uses the cookie-based server client
+ * (RLS scopes it to the caller). Returns [] when logged out or no paid orders.
+ * @param {number} limit max results
+ * @return {Promise<Product[]>} products ranked by the user's taste vector
+ */
+export async function getPickedForYou(limit = 4): Promise<Product[]> {
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase.rpc("picked_for_you", {
+    p_user_id: user.id,
+    match_count: limit,
+  });
+  if (error) return [];
+  return data ?? [];
+}
+
+/**
  * @return {Promise<Product[]>} 4 newest products
  */
 export async function getFeaturedProducts(): Promise<Product[]> {
@@ -313,7 +336,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
     .select("*")
-    .order("created_at", { ascending: false })
+    .order("released_at", { ascending: false })
     .limit(4);
   if (error) throw new Error(`getFeaturedProducts: ${error.message}`);
   return data ?? [];

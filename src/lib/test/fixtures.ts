@@ -21,6 +21,7 @@ export function makeProduct(overrides: Partial<Product> = {}): Product {
     category_id: "c1",
     review_summary: null,
     review_summary_count: 0,
+    released_at: "2026-01-01T00:00:00Z",
     created_at: "2026-01-01T00:00:00Z",
     ...overrides,
   };

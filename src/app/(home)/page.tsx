@@ -1,10 +1,29 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { CompareBar } from "@/components/compare/compare-bar";
 import { ProductCard } from "@/components/product-card";
 import { ProductQuiz } from "@/components/quiz/product-quiz";
-import { getFeaturedProducts } from "@/lib/data";
+import { getFeaturedProducts, getPickedForYou } from "@/lib/data";
 
 export const revalidate = 3600;
+
+// Per-user, so it renders dynamically (reads auth cookies) inside Suspense,
+// keeping the rest of the page static/ISR. Renders nothing when logged out or
+// the shopper has no order history to personalize from.
+async function PickedForYou() {
+  const picks = await getPickedForYou();
+  if (picks.length === 0) return null;
+  return (
+    <section className="pb-16">
+      <h2 className="mb-6 text-xl font-semibold">Picked for you</h2>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {picks.map((p) => (
+          <ProductCard key={p.id} product={p} />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default async function HomePage() {
   let featured: Awaited<ReturnType<typeof getFeaturedProducts>> = [];
@@ -40,6 +59,10 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      <Suspense>
+        <PickedForYou />
+      </Suspense>
 
       <div className="pb-16">
         <ProductQuiz />

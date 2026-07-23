@@ -16,6 +16,7 @@
     "seed": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed.mjs",
     "seed:digital": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed-digital.mjs",
     "seed:reviews": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed-reviews.mjs",
+    "seed:orders": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed-orders.mjs",
     "showUsage": "node --import ./scripts/load-env.mjs scripts/groq-usage.mjs",
     "seed:specs": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed-specs.mjs",
     "update:images": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/update-images.mjs",

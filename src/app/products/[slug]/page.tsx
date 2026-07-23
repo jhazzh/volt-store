@@ -7,7 +7,7 @@ import { RelatedProducts } from "@/components/related-products";
 import { ReviewsSection } from "@/components/reviews-section";
 import { ProductQA } from "@/components/product-qa";
 import { getProduct, getProducts } from "@/lib/data";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatDate } from "@/lib/format";
 
 export const revalidate = 3600;
 
@@ -95,6 +95,9 @@ export default async function ProductPage({ params }: Props) {
               : product.stock > 0
                 ? `${product.stock} in stock`
                 : "Currently unavailable"}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            Released {formatDate(product.released_at)}
           </p>
           {product.specs && product.specs.length > 0 && (
             <dl className="mt-6 divide-y divide-border border-t border-border text-sm">

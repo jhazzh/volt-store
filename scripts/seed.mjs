@@ -234,11 +234,26 @@ if (catErr) throw catErr;
 
 const catId = Object.fromEntries(cats.map((c) => [c.slug, c.id]));
 
-const rows = products.map(([name, slug, description, price, stock, img, cat]) => {
+// Spread release dates over the last ~24 months so "latest" is meaningful and
+// sorting by recency isn't a coin-flip. Deterministic (by index) so re-seeding
+// is stable. Later products in the list read as the newest.
+const RELEASE_SPAN_DAYS = 720;
+const releaseDate = (i, total) => {
+  const daysAgo = Math.round((1 - i / Math.max(total - 1, 1)) * RELEASE_SPAN_DAYS);
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString();
+};
+
+const rows = products.map(([name, slug, description, price, stock, img, cat], i) => {
   // Prefer the product's distinct photo; fall back to the type photo.
   const image_url = distinct[slug] ?? photos[img];
   if (!image_url) throw new Error(`${slug}: no image (key "${img}")`);
-  return { name, slug, description, price, stock, image_url, category_id: catId[cat] };
+  return {
+    name, slug, description, price, stock, image_url,
+    category_id: catId[cat],
+    released_at: releaseDate(i, products.length),
+  };
 });
 
 const { error: prodErr } = await supabase

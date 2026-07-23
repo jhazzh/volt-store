@@ -59,14 +59,16 @@ export function ProductQuiz() {
       // First line is the products JSON; the rest streams as the pitch text.
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = "";
+      let buffer = ""; // holds the JSON header line until the newline arrives
+      let text = ""; // full pitch so far — the single source of truth
       let headerDone = false;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
 
         if (!headerDone) {
+          buffer += chunk;
           const nl = buffer.indexOf("\n");
           if (nl === -1) continue; // header line not complete yet
           try {
@@ -76,14 +78,13 @@ export function ProductQuiz() {
             setPhase("asking");
             return;
           }
-          buffer = buffer.slice(nl + 1);
+          text = buffer.slice(nl + 1); // any pitch bytes after the newline
           headerDone = true;
           setPhase("done");
+        } else {
+          text += chunk;
         }
-        if (headerDone && buffer) {
-          setPitch((prev) => prev + buffer);
-          buffer = "";
-        }
+        setPitch(text);
       }
       setPhase("done");
     } catch {
