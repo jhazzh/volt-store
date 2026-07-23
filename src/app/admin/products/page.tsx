@@ -13,6 +13,7 @@ type Row = {
   price: number;
   stock: number | null;
   product_type: string;
+  goes_well_with: string[];
 };
 
 export default async function AdminProductsPage() {
@@ -20,9 +21,12 @@ export default async function AdminProductsPage() {
   const supabase = await createClient();
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, price, stock, product_type")
+    .select("id, name, price, stock, product_type, goes_well_with")
     .order("name")
     .returns<Row[]>();
+
+  // Resolve the stored pairing ids into names for display.
+  const names = new Map((products ?? []).map((p) => [p.id, p.name]));
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
@@ -43,6 +47,7 @@ export default async function AdminProductsPage() {
             <th>Type</th>
             <th>Price</th>
             <th>Stock</th>
+            <th>Goes well with</th>
             <th></th>
           </tr>
         </thead>
@@ -53,6 +58,13 @@ export default async function AdminProductsPage() {
               <td>{p.product_type}</td>
               <td>{formatPrice(p.price)}</td>
               <td>{p.stock ?? "∞"}</td>
+              <td className="max-w-xs text-muted">
+                {p.goes_well_with.length === 0
+                  ? "—"
+                  : p.goes_well_with
+                      .map((id) => names.get(id) ?? "?")
+                      .join(", ")}
+              </td>
               <td className="flex justify-end gap-3 py-2">
                 <Link href={`/admin/products/${p.id}`} className="text-accent hover:underline">
                   Edit

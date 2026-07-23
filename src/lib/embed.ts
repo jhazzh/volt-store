@@ -51,17 +51,17 @@ export function productEmbedText(name: string, description: string | null): stri
  * @param {string} id product id
  * @param {string} name product name
  * @param {string | null} description product description
- * @return {Promise<void>} resolves once the write is attempted
+ * @return {Promise<boolean>} true if the embedding was stored
  */
 export async function embedProduct(
   id: string,
   name: string,
   description: string | null
-): Promise<void> {
+): Promise<boolean> {
   const embedding = await embedText(productEmbedText(name, description));
   if (!embedding) {
     console.error(`embedProduct: embedding failed for ${id}`);
-    return;
+    return false;
   }
 
   // Admin client: this runs after the response, outside the user's session.
@@ -69,5 +69,9 @@ export async function embedProduct(
     .from("products")
     .update({ embedding })
     .eq("id", id);
-  if (error) console.error(`embedProduct: write failed for ${id}: ${error.message}`);
+  if (error) {
+    console.error(`embedProduct: write failed for ${id}: ${error.message}`);
+    return false;
+  }
+  return true;
 }

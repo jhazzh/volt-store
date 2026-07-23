@@ -21,6 +21,7 @@
     "seed:specs": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/seed-specs.mjs",
     "update:images": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/update-images.mjs",
     "embed": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/embed-products.mjs",
+    "pair": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/pair-products.mjs",
     "create:bucket": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/create-bucket.mjs",
     "make:admin": "node --import ./scripts/load-env.mjs --experimental-websocket scripts/make-admin.mjs",
     "revalidate": "node --import ./scripts/load-env.mjs scripts/revalidate.mjs",

@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { mergeSearchResults } from "@/lib/merge";
+import type { Candidate } from "@/lib/goes-well-with";
 import type {
   Category,
   Product,
@@ -148,6 +149,64 @@ export async function getRelatedProducts(
     match_count: limit,
   });
   if (error) return [];
+  return data ?? [];
+}
+
+/**
+ * Candidate pool for "goes well with": semantic neighbours plus same-category
+ * items, deduped. Neighbours alone skew to substitutes (a phone's nearest rows
+ * are other phones), so the category rows are what surface real accessories.
+ * @param {string} id source product id
+ * @param {string | null} categoryId source product's category, if any
+ * @param {number} limit max candidates
+ * @return {Promise<Candidate[]>} pool for the LLM, excluding the source
+ */
+export async function getPairingCandidates(
+  id: string,
+  categoryId: string | null,
+  limit = 25 // mirrors CANDIDATE_COUNT; not imported (that module is server-only)
+): Promise<Candidate[]> {
+  const supabase = createStaticClient();
+  const half = Math.ceil(limit / 2);
+
+  const [related, sameCategory] = await Promise.all([
+    supabase.rpc("related_products", { source_id: id, match_count: limit }),
+    categoryId
+      ? supabase
+          .from("products")
+          .select("id, name, category_id")
+          .eq("category_id", categoryId)
+          .neq("id", id)
+          .limit(half)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  const byId = new Map<string, Candidate>();
+  for (const row of [...(related.data ?? []), ...(sameCategory.data ?? [])]) {
+    if (row.id === id || byId.has(row.id)) continue;
+    byId.set(row.id, { id: row.id, name: row.name });
+  }
+  return [...byId.values()].slice(0, limit);
+}
+
+/**
+ * Complements for everything in the cart, deduped and with cart items removed.
+ * No LLM call — reads the precomputed goes_well_with arrays via SQL.
+ * @param {string[]} cartIds product ids currently in the cart
+ * @param {number} limit max suggestions
+ * @return {Promise<Product[]>} suggested products, best first
+ */
+export async function getCartUpsells(
+  cartIds: string[],
+  limit = 3
+): Promise<Product[]> {
+  if (cartIds.length === 0) return [];
+  const supabase = createStaticClient();
+  const { data, error } = await supabase.rpc("cart_upsells", {
+    cart_ids: cartIds,
+    match_count: limit,
+  });
+  if (error) return []; // section just doesn't render
   return data ?? [];
 }
 

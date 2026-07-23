@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCart } from "@/components/cart/cart-context";
+import { CartUpsells } from "@/components/cart/cart-upsells";
 import { cartTotal } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 
@@ -143,6 +144,8 @@ export function CartDrawer() {
                 </li>
               ))}
             </ul>
+
+            {items.length > 0 && <CartUpsells />}
 
             <div className="border-t border-border pt-4">
               <div className="flex justify-between text-sm">

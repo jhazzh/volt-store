@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { embedProduct } from "@/lib/embed";
+import { pairProduct } from "@/lib/pair-product";
 import { generateDescription } from "@/lib/product-description";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -166,8 +167,19 @@ export async function createProduct(_prev: State, formData: FormData): Promise<S
   const specError = await saveSpecs(supabase, data.id, formData);
   if (specError) return { error: specError };
 
-  // Off the response path — the admin shouldn't wait on the search index.
-  after(() => embedProduct(data.id, row.name as string, row.description as string));
+  // Off the response path — the admin shouldn't wait on the search index or
+  // the LLM. Pairing needs the embedding to exist first (its candidate pool
+  // comes from related_products), so it's chained, not run in parallel.
+  after(async () => {
+    const embedded = await embedProduct(
+      data.id,
+      row.name as string,
+      row.description as string
+    );
+    if (embedded) {
+      await pairProduct(data.id, row.name as string, row.category_id as string | null);
+    }
+  });
 
   revalidatePath("/admin/products");
   revalidatePath("/products");
@@ -188,7 +200,7 @@ export async function updateProduct(
   // Read the old text first: re-embedding is only worth it if it changed.
   const { data: before } = await supabase
     .from("products")
-    .select("name, description")
+    .select("name, description, category_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -200,8 +212,20 @@ export async function updateProduct(
 
   const name = row.name as string;
   const description = row.description as string;
-  if (!before || before.name !== name || before.description !== description) {
-    after(() => embedProduct(id, name, description));
+  const categoryId = row.category_id as string | null;
+  const textChanged =
+    !before || before.name !== name || before.description !== description;
+  // Category drives half the candidate pool, so a move re-pairs even when the
+  // text is untouched.
+  const repair = textChanged || before?.category_id !== categoryId;
+
+  if (textChanged || repair) {
+    after(async () => {
+      // Only re-embed when the embedded text actually changed; a category-only
+      // move still needs re-pairing against the existing vector.
+      const ready = textChanged ? await embedProduct(id, name, description) : true;
+      if (ready && repair) await pairProduct(id, name, categoryId);
+    });
   }
 
   revalidatePath("/admin/products");
