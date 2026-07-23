@@ -10,6 +10,10 @@ import { createClient } from "@supabase/supabase-js";
 // Uses the admin client, which bypasses orders RLS — demo data only.
 const force = process.argv.includes("--force");
 
+// Shared password for all demo buyers, so anyone can log in and see the
+// personalized "Picked for you" section. Demo data only.
+const DEMO_PASSWORD = "demo1234";
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY,
@@ -54,16 +58,22 @@ async function findUserId(email) {
   }
 }
 
-// Create the buyer if missing, reusing the id when it already exists.
+// Create the buyer if missing, reusing the id when it already exists. Either
+// way the account ends with DEMO_PASSWORD so the login is predictable.
 async function ensureUser(email) {
   const { data, error } = await supabase.auth.admin.createUser({
     email,
-    password: crypto.randomUUID(), // throwaway; demo account
+    password: DEMO_PASSWORD,
     email_confirm: true,
   });
   if (error) {
     const id = await findUserId(email);
     if (!id) throw new Error(`createUser ${email}: ${error.message}`);
+    // Existing buyer (e.g. seeded before, with a random password): reset it.
+    const { error: updErr } = await supabase.auth.admin.updateUserById(id, {
+      password: DEMO_PASSWORD,
+    });
+    if (updErr) throw new Error(`updateUser ${email}: ${updErr.message}`);
     return id;
   }
   return data.user.id;
